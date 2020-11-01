@@ -1,3 +1,9 @@
+#include <FunctionalInterrupt.h>
+#include <functional>
+#include <string>
+
+using namespace std;
+
 void setupSerial()
 {
     Serial.begin(115200);
@@ -37,7 +43,7 @@ struct eColor
     } Enum;
 };
 
-char* color2String(int color)
+string color2String(int color)
 {
     if(color == eColor::Black) return "Black";
     if(color == eColor::Red) return "Red";
@@ -60,96 +66,94 @@ void set3LedColor(int color)
     digitalWrite(LED_PIN_B, B);
 
     char s[64] = {0, };
-    snprintf(s, sizeof(s), "[LED] Color:%s - B:%d G:%d R:%d", color2String(color), B, G, R);
+    snprintf(s, sizeof(s), "[LED] Color:%s - B:%d G:%d R:%d", color2String(color).c_str(), B, G, R);
     Serial.println(s);
 }
 
 const uint32_t DebounceTime = 200; // 0.2s
 
-uint32_t lastCallTimeD3 = 0;
-ICACHE_RAM_ATTR void interruptHandler_D3_button()
+class Button
 {
-    if(millis() - lastCallTimeD3 < debounceTime) return;
-    lastCallTimeD3 = millis();
+private:
+    const uint32_t _gpioNum;
+    const string _name;
+    uint32_t _lastCallTime;
+    uint32_t _count;
+    function<void ()> _isr;
 
-    static int count = 0;
+    void isrCommon();
+
+public:
+    Button(uint32_t gpioNum, const char* name, function<void()> isr);
+    ~Button();
+
+    void initialize();
+    uint32_t gpioNum();
+    string name();
+};
+
+
+
+Button::Button(uint32_t gpioNum, const char* name, function<void()> isr)
+: _gpioNum(gpioNum), _name(name), _lastCallTime(0), _count(0), _isr(isr)
+{
+}
+
+Button::~Button()
+{}
+
+void Button::initialize()
+{
+    pinMode(_gpioNum, INPUT_PULLUP);
+    // function<void(void)> f = bind(&Button::isrCommon, this);
+    attachInterrupt(_gpioNum, bind(&Button::isrCommon, this), FALLING);
+
     char s[64] = {0, };
-    snprintf(s, sizeof(s), "D3 Button. Count:%d", ++count);
+    snprintf(s, sizeof(s), "%s Button OK...", _name.c_str());
     Serial.println(s);
 }
 
-void setupButtonD3()
+uint32_t Button::gpioNum()
 {
-    const int interrupt_pin = 0; // D3
-    pinMode(interrupt_pin, INPUT_PULLUP);
-    attachInterrupt(interrupt_pin, interruptHandler_D3_button, FALLING);
-    Serial.println("D3 Button OK...");
+    return _gpioNum;
 }
 
-uint32_t lastCallTimeD6 = 0;
-ICACHE_RAM_ATTR void interruptHandler_D6_button()
+string Button::name()
 {
-    if(millis() - lastCallTimeD6 < debounceTime) return;
-    lastCallTimeD6 = millis();
+    return _name;
+}
 
-    static int count = 0;
+void Button::isrCommon()
+{
+    if(millis() - _lastCallTime < DebounceTime) return;
+    _lastCallTime = millis();
+
     char s[64] = {0, };
-    snprintf(s, sizeof(s), "D6 Button. Count:%d", ++count);
+    snprintf(s, sizeof(s), "%s Button. Count:%d", _name.c_str(), ++_count);
     Serial.println(s);
+    
+    if(_isr) _isr();
+}
 
+ICACHE_RAM_ATTR void interruptHandler_D6_button();
+Button button_D6(12, "[D6/GPIO12]", &interruptHandler_D6_button);
+void interruptHandler_D6_button()
+{
     set3LedColor(eColor::Red);
 }
 
-void setupButtonD6()
+ICACHE_RAM_ATTR void interruptHandler_D7_button();
+Button button_D7(13, "[D7/GPIO13]", &interruptHandler_D7_button);
+void interruptHandler_D7_button()
 {
-    const int interrupt_pin = 12; // D6
-    pinMode(interrupt_pin, INPUT_PULLUP);
-    attachInterrupt(interrupt_pin, interruptHandler_D6_button, FALLING);
-    Serial.println("D6 Button OK...");
-}
-
-uint32_t lastCallTimeD7 = 0;
-ICACHE_RAM_ATTR void interruptHandler_D7_button()
-{
-    if(millis() - lastCallTimeD7 < debounceTime) return;
-    lastCallTimeD7 = millis();
-
-    static int count = 0;
-    char s[64] = {0, };
-    snprintf(s, sizeof(s), "D7 Button. Count:%d", ++count);
-    Serial.println(s);
-
     set3LedColor(eColor::Green);
 }
 
-void setupButtonD7()
+ICACHE_RAM_ATTR void interruptHandler_D8_button();
+Button button_D8(15, "[D8/GPIO15]", &interruptHandler_D8_button); // PULL DOWN
+void interruptHandler_D8_button()
 {
-    const int interrupt_pin = 13; // D7
-    pinMode(interrupt_pin, INPUT_PULLUP);
-    attachInterrupt(interrupt_pin, interruptHandler_D7_button, FALLING);
-    Serial.println("D7 Button OK...");
-}
-
-uint32_t lastCallTimeD8 = 0;
-ICACHE_RAM_ATTR void interruptHandler_D8_button()
-{
-    if(millis() - lastCallTimeD8 < debounceTime) return;
-    lastCallTimeD8 = millis();
-
-    static int count = 0;
-    char s[64] = {0, };
-    snprintf(s, sizeof(s), "D8 Button. Count:%d", ++count);
-    Serial.println(s);
-    
     set3LedColor(eColor::Blue);
-}
-
-void setupButtonD8()
-{
-    const int interrupt_pin = 15; // D8 (PULL DOWN)
-    pinMode(interrupt_pin, INPUT_PULLUP);
-    attachInterrupt(interrupt_pin, interruptHandler_D8_button, FALLING);
-    Serial.println("D8 Button OK...");
 }
 
 void setup()
@@ -159,10 +163,9 @@ void setup()
     setupLED();
     setup3ColorLED();
 
-    // setupButtonD3();
-    setupButtonD6();
-    setupButtonD7();
-    setupButtonD8();
+    button_D6.initialize();
+    button_D7.initialize();
+    button_D8.initialize();
 
     Serial.println("Initialize done...");
     Serial.println("Initialize done...");
