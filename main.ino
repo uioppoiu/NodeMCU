@@ -1,7 +1,3 @@
-#include <cstdio>
-
-const uint32_t debounceTime = 200; // 0.2s
-
 void setupSerial()
 {
     Serial.begin(115200);
@@ -15,14 +11,14 @@ void setupLED()
     Serial.println("LED OK...");
 }
 
-const int LED_R = 0; // D3;
-const int LED_G = 2; // D4;
-const int LED_B = 14; // D5;
+const int LED_PIN_R = 0; // D3;
+const int LED_PIN_G = 2; // D4;
+const int LED_PIN_B = 14; // D5;
 void setup3ColorLED()
 {
-    pinMode(LED_B, OUTPUT);
-    pinMode(LED_G, OUTPUT);
-    pinMode(LED_R, OUTPUT);
+    pinMode(LED_PIN_B, OUTPUT);
+    pinMode(LED_PIN_G, OUTPUT);
+    pinMode(LED_PIN_R, OUTPUT);
     Serial.println("3Color LED OK...");
 }
 
@@ -59,14 +55,16 @@ void set3LedColor(int color)
     bool R = color & 0x01;
     bool G = color & 0x02;
     bool B = color & 0x04;
-    digitalWrite(LED_R, R);
-    digitalWrite(LED_G, G);
-    digitalWrite(LED_B, B);
+    digitalWrite(LED_PIN_R, R);
+    digitalWrite(LED_PIN_G, G);
+    digitalWrite(LED_PIN_B, B);
 
     char s[64] = {0, };
     snprintf(s, sizeof(s), "[LED] Color:%s - B:%d G:%d R:%d", color2String(color), B, G, R);
     Serial.println(s);
 }
+
+const uint32_t DebounceTime = 200; // 0.2s
 
 uint32_t lastCallTimeD3 = 0;
 ICACHE_RAM_ATTR void interruptHandler_D3_button()
