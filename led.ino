@@ -1,4 +1,8 @@
-#include "Led.h"
+#include "src/Led/Led.h"
+#include "src/UartInterface/UartMessageInterface.h"
+#include "src/UartInterface/UartMessageCallbackManagement.h"
+#include "src/UartInterface/UartMessageSender.h"
+#include "src/UartInterface/UartMessageReceiver.h"
 
 void setupLED()
 {

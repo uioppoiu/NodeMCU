@@ -1,5 +1,9 @@
-#include "Button.h"
-#include "Led.h"
+#include "src/Button/Button.h"
+#include "src/Led/Led.h"
+#include "src/UartInterface/UartMessageInterface.h"
+#include "src/UartInterface/UartMessageCallbackManagement.h"
+#include "src/UartInterface/UartMessageSender.h"
+#include "src/UartInterface/UartMessageReceiver.h"
 
 ICACHE_RAM_ATTR void interruptHandler_D6_button();
 Button Button_D6(12, "[D6/GPIO12]", &interruptHandler_D6_button);
@@ -21,3 +25,4 @@ void interruptHandler_D8_button()
 {
     set3LedColor(eColor::Blue);
 }
+
