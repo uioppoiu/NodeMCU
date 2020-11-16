@@ -1,13 +1,10 @@
 #ifndef _UART_MESSAGE_SENDER_H_
 #define _UART_MESSAGE_SENDER_H_
 
-#include <string>
-#include <ctime>
-#include "tinyxml2/tinyxml2.h"
+#include <Arduino.h>
+#include <ArduinoJson.h>
 #include "UartMessageInterface.h"
 #include "UartMessageCallbackManagement.h"
-
-using namespace tinyxml2;
 
 namespace UartMessageInterface
 {
@@ -15,66 +12,78 @@ namespace UartMessageInterface
     {
     public:
         UartMessageSender(eMessageType messageType, eCommandType commandType);
+        ~UartMessageSender();
 
         // Request
-        void appendRequest(eDataType type, const std::string &name); // All 이면 return;
+        void appendRequest(eDataType type, const String &name); // All 이면 return;
         void appendRequestAll(eDataType type);                  // 나머지 비우고 All로
 
         // Response
         template<typename VALUE_TYPE>
-        void appendResponse(eDataType type, const std::string &name, const VALUE_TYPE &value, eValueType valueType)
+        void appendResponse(eDataType dataType, const String &name, eValueType valueType, const VALUE_TYPE &value)
         {
-            XMLElement *child = NULL;
-            switch (type)
+            if (!_jsonDoc.containsKey("Data"))
+            {
+                _jsonDoc.createNestedArray("Data");
+            }
+
+            JsonArray dataArr = _jsonDoc.getMember("Data");
+            JsonObject data = dataArr.createNestedObject();
+            switch (dataType)
             {
             case SensorTemperature:
-                child = _xmlDoc.NewElement("TEMPERATURE");
+                data["Type"] = "Temp";
                 break;
             case SensorCO2:
-                child = _xmlDoc.NewElement("CO2");
+                data["Type"] = "CO2";
                 break;
             case SensorHumidity:
-                child = _xmlDoc.NewElement("HUMIDITY");
+                data["Type"] = "Humid";
                 break;
             case SensorConductivity:
-                child = _xmlDoc.NewElement("CONDUCTIVITY");
+                data["Type"] = "Conduct";
                 break;
-            case Control0:
-                child = _xmlDoc.NewElement("CONTROL0");
+            case Control1:
+                data["Type"] = "Control1";
+                break;
+            case Control2:
+                data["Type"] = "Control2";
+                break;
+            case DateTime:
+                data["Type"] = "DateTime";
                 break;
             default:
                 return;
             }
 
-            child->SetAttribute("NAME", name.c_str());
-            if (valueType == Double)
+            data["Name"] = name;
+
+            if (valueType == Float)
             {
-                child->SetAttribute("TYPE", "DOUBLE");
-                child->SetAttribute("VALUE", value);
+                data["ValType"] = "Float";
+                data["Val"] = (float)value;
+
             }
             else // Integer
             {
-                child->SetAttribute("TYPE", "INTEGER");
-                child->SetAttribute("VALUE", value);
+                data["ValType"] = "Integer";
+                data["Val"] = (int)value;
             }
-
-            _command->InsertEndChild(child);
         }
 
         // Subscribe
-        void appendSubscribe(eDataType type, const std::string &name, uint32_t period); // All 이면 return;
-        void appendSubscribeAll(eDataType type, uint32_t period);                  // 나머지 비우고 All로
+        void appendSubscribe(eDataType type, const String &name, unsigned int period); // All 이면 return;
+        void appendSubscribeAll(eDataType type, unsigned int period);                  // 나머지 비우고 All로
 
         // Unsubscribe
-        void appendUnsubscribe(eDataType type, const std::string &name); // All 이면 return;
+        void appendUnsubscribe(eDataType type, const String &name); // All 이면 return;
         void appendUnsubscribeAll(eDataType type);                  // 나머지 비우고 All로
 
-        std::string sendMessage();
+        String sendMessage();
 
     private:
-        uint32_t _seqId;
-        XMLDocument _xmlDoc;
-        XMLElement *_command;
+        unsigned int _seqId;
+        DynamicJsonDocument _jsonDoc;
         UartMessageSender();
     };
 

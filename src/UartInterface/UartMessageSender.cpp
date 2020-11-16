@@ -1,52 +1,53 @@
-#include <Arduino.h>
-#include <iostream>
+#include "Arduino.h"
 #include "UartMessageSender.h"
 
 namespace UartMessageInterface
 {
     UartMessageSender::UartMessageSender(eMessageType messageType, eCommandType commandType)
-        : _seqId(0), _command(NULL)
+        : _seqId(0), _jsonDoc(256)
     {
-        XMLElement *root = NULL;
         switch (messageType)
         {
         case Request:
-            root = _xmlDoc.NewElement("REQUEST");
+            _jsonDoc["MsgType"] = "Req";
             break;
         case Response:
-            root = _xmlDoc.NewElement("RESPONSE");
+            _jsonDoc["MsgType"] = "Rsp";
             break;
         case Notification:
-            root = _xmlDoc.NewElement("NOTIFICATION");
+            _jsonDoc["MsgType"] = "Noti";
             break;
         case Acknowledge:
-            root = _xmlDoc.NewElement("ACKNOWLEDGE");
+            _jsonDoc["MsgType"] = "Ack";
             break;
         default:
             // throw invalid_argument("Invalid MessageType");
             return;
         }
-        _xmlDoc.InsertFirstChild(root);
 
         switch (commandType)
         {
         case Get:
-            _command = _xmlDoc.NewElement("GET");
+            _jsonDoc["Cmd"] = "Get";
             break;
         case Set:
-            _command = _xmlDoc.NewElement("SET");
+            _jsonDoc["Cmd"] = "Set";
             break;
         case Subscribe:
-            _command = _xmlDoc.NewElement("SUBSCRIBE");
+            _jsonDoc["Cmd"] = "Subs";
             break;
         case Unsubscribe:
-            _command = _xmlDoc.NewElement("UNSUBSCRIBE");
+            _jsonDoc["Cmd"] = "Unsubs";
             break;
         default:
             // throw invalid_argument("Invalid CommandType");
             return;
         }
-        root->InsertEndChild(_command);
+    }
+
+    UartMessageSender::~UartMessageSender()
+    {
+        _jsonDoc.garbageCollect();
     }
 
     void UartMessageSender::appendRequestAll(eDataType type)
@@ -54,39 +55,47 @@ namespace UartMessageInterface
         if (type != SensorAll || type != ControlAll)
             return;
 
-        _command->DeleteChildren();
+        _jsonDoc.remove("Data");
+        JsonArray dataArr = _jsonDoc.createNestedArray("Data");
+        JsonObject data = dataArr.createNestedObject();
 
         if (type == SensorAll)
-            _command->SetText("SENSOR_ALL");
-        if (type == ControlAll)
-            _command->SetText("CONTROL_ALL");
+            data["Type"] = "SensorAll";
+        else if (type == ControlAll)
+            data["Type"] = "CtrlAll";
     }
 
-    void UartMessageSender::appendRequest(eDataType dataType, const std::string &name)
+    void UartMessageSender::appendRequest(eDataType dataType, const String &name)
     {
-        XMLElement *child = NULL;
+        if (!_jsonDoc.containsKey("Data"))
+        {
+            _jsonDoc.createNestedArray("Data");
+        }
+
+        JsonArray dataArr = _jsonDoc.getMember("Data");
+        JsonObject data = dataArr.createNestedObject();
         switch (dataType)
         {
         case SensorTemperature:
-            child = _xmlDoc.NewElement("TEMPERATURE");
+            data["Type"] = "Temp";
             break;
         case SensorCO2:
-            child = _xmlDoc.NewElement("CO2");
+            data["Type"] = "CO2";
             break;
         case SensorHumidity:
-            child = _xmlDoc.NewElement("HUMIDITY");
+            data["Type"] = "Humid";
             break;
         case SensorConductivity:
-            child = _xmlDoc.NewElement("CONDUCTIVITY");
+            data["Type"] = "Conduct";
             break;
         case Control1:
-            child = _xmlDoc.NewElement("CONTROL1");
+            data["Type"] = "Control1";
             break;
         case Control2:
-            child = _xmlDoc.NewElement("CONTROL2");
+            data["Type"] = "Control2";
             break;
         case DateTime:
-            child = _xmlDoc.NewElement("DATETIME");
+            data["Type"] = "DateTime";
             break;
         case SensorAll:
         case ControlAll:
@@ -95,137 +104,136 @@ namespace UartMessageInterface
         default:
             return;
         }
-
-        child->SetAttribute("NAME", name.c_str());
-        _command->InsertEndChild(child);
+        data["Name"] = name;
     }
 
-    void UartMessageSender::appendSubscribe(eDataType type, const std::string &name, uint32_t period)
+    void UartMessageSender::appendSubscribe(eDataType dataType, const String &name, unsigned int period)
     {
-        XMLElement *child = NULL;
-        switch (type)
+        if (!_jsonDoc.containsKey("Data"))
+        {
+            _jsonDoc.createNestedArray("Data");
+        }
+
+        JsonArray dataArr = _jsonDoc.getMember("Data");
+        JsonObject data = dataArr.createNestedObject();
+        switch (dataType)
         {
         case SensorTemperature:
-            child = _xmlDoc.NewElement("TEMPERATURE");
+            data["Type"] = "Temp";
             break;
         case SensorCO2:
-            child = _xmlDoc.NewElement("CO2");
+            data["Type"] = "CO2";
             break;
         case SensorHumidity:
-            child = _xmlDoc.NewElement("HUMIDITY");
+            data["Type"] = "Humid";
             break;
         case SensorConductivity:
-            child = _xmlDoc.NewElement("CONDUCTIVITY");
+            data["Type"] = "Conduct";
             break;
         case Control1:
-            child = _xmlDoc.NewElement("CONTROL1");
+            data["Type"] = "Control1";
             break;
         case Control2:
-            child = _xmlDoc.NewElement("CONTROL2");
+            data["Type"] = "Control2";
             break;
         case DateTime:
-            child = _xmlDoc.NewElement("DATETIME");
+            data["Type"] = "DateTime";
             break;
         case SensorAll:
         case ControlAll:
-            appendSubscribeAll(type, period);
+            appendSubscribeAll(dataType, period);
             return;
         default:
             return;
         }
-
-        child->SetAttribute("NAME", name.c_str());
-        child->SetAttribute("PERIOD", period);
-        _command->InsertEndChild(child);
+        data["Name"] = name;
+        data["Period"] = period;
     }
 
-    void UartMessageSender::appendSubscribeAll(eDataType type, uint32_t period)
+    void UartMessageSender::appendSubscribeAll(eDataType dataType, unsigned int period)
     {
-        if (type != SensorAll || type != ControlAll)
+        if (dataType != SensorAll || dataType != ControlAll)
             return;
 
-        _command->DeleteChildren();
+        _jsonDoc.remove("Data");
+        JsonArray dataArr = _jsonDoc.createNestedArray("Data");
+        JsonObject data = dataArr.createNestedObject();
 
-        XMLElement *child = NULL;
-        if (type == SensorAll)
-            child = _xmlDoc.NewElement("SENSOR_ALL");
-        else if (type == ControlAll)
-            child = _xmlDoc.NewElement("CONTROL_ALL");
+        if (dataType == SensorAll)
+            data["Type"] = "SensorAll";
+        else if (dataType == ControlAll)
+            data["Type"] = "CtrlAll";
 
-        child->SetAttribute("PERIOD", period);
-
-        _command->InsertEndChild(child);
+        data["Period"] = period;        
     }
 
-    void UartMessageSender::appendUnsubscribe(eDataType type, const std::string &name)
+    void UartMessageSender::appendUnsubscribe(eDataType dataType, const String &name)
     {
-        XMLElement *child = NULL;
-        switch (type)
+        if (!_jsonDoc.containsKey("Data"))
+        {
+            _jsonDoc.createNestedArray("Data");
+        }
+
+        JsonArray dataArr = _jsonDoc.getMember("Data");
+        JsonObject data = dataArr.createNestedObject();
+        switch (dataType)
         {
         case SensorTemperature:
-            child = _xmlDoc.NewElement("TEMPERATURE");
+            data["Type"] = "Temp";
             break;
         case SensorCO2:
-            child = _xmlDoc.NewElement("CO2");
+            data["Type"] = "CO2";
             break;
         case SensorHumidity:
-            child = _xmlDoc.NewElement("HUMIDITY");
+            data["Type"] = "Humid";
             break;
         case SensorConductivity:
-            child = _xmlDoc.NewElement("CONDUCTIVITY");
+            data["Type"] = "Conduct";
             break;
         case Control1:
-            child = _xmlDoc.NewElement("CONTROL1");
+            data["Type"] = "Control1";
             break;
         case Control2:
-            child = _xmlDoc.NewElement("CONTROL2");
+            data["Type"] = "Control2";
             break;
         case DateTime:
-            child = _xmlDoc.NewElement("DATETIME");
+            data["Type"] = "DateTime";
             break;
         case SensorAll:
         case ControlAll:
-            appendUnsubscribeAll(type);
+            appendUnsubscribeAll(dataType);
             return;
         default:
             return;
         }
-
-        child->SetAttribute("NAME", name.c_str());
-        _command->InsertEndChild(child);
+        data["Name"] = name;
     }
 
-    void UartMessageSender::appendUnsubscribeAll(eDataType type)
+    void UartMessageSender::appendUnsubscribeAll(eDataType dataType)
     {
-        if (type != SensorAll || type != ControlAll)
+        if (dataType != SensorAll || dataType != ControlAll)
             return;
 
-        _command->DeleteChildren();
+        _jsonDoc.remove("Data");
+        JsonArray dataArr = _jsonDoc.createNestedArray("Data");
+        JsonObject data = dataArr.createNestedObject();
 
-        XMLElement *child = NULL;
-        if (type == SensorAll)
-            child = _xmlDoc.NewElement("SENSOR_ALL");
-        else if (type == ControlAll)
-            child = _xmlDoc.NewElement("CONTROL_ALL");
-
-        _command->InsertEndChild(child);
+        if (dataType == SensorAll)
+            data["Type"] = "SensorAll";
+        else if (dataType == ControlAll)
+            data["Type"] = "CtrlAll";
     }
 
-    std::string UartMessageSender::sendMessage()
+    String UartMessageSender::sendMessage()
     {
-        // Add SEQUENCE ID (ROOT에 attribute 있으면 안됨)
-        // XMLElement *root = _xmlDoc.RootElement();
-        // root->SetAttribute("SEQUENCE ID", _seqId);
-
-        XMLPrinter xmlPrint;
-        _xmlDoc.Print(&xmlPrint);
-        std::string buf = xmlPrint.CStr();
+        String buf;
+        serializeJson(_jsonDoc, buf);
         appendCheckSum(buf);
 
-        Serial.println(buf.c_str());
-        // cout << buf << endl;
-
         return buf;
+        // Serial.println(buf.c_str());
+
+        _jsonDoc.garbageCollect();
     }
 
 }; // namespace UartMessageInterface

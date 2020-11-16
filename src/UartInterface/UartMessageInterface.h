@@ -1,11 +1,7 @@
 #ifndef _MESSAGE_INTERFACE_H_
 #define _MESSAGE_INTERFACE_H_
 
-#include <string>
-#include <ctime>
-#include "tinyxml2/tinyxml2.h"
-
-using namespace tinyxml2;
+#include <Arduino.h>
 
 namespace UartMessageInterface
 {
@@ -43,26 +39,26 @@ namespace UartMessageInterface
     typedef enum
     {
         Integer = 0,
-        Double,
+        Float,
     } eValueType;
 
     struct Value
     {
         eValueType type;
         union {
-            uint32_t val_int;
-            double val_double;
+            int val_int;
+            float val_float;
         } value;
     };
 
     eDataType str2EnumDataType(const char *input);
-    std::string enum2Str(eDataType input);
+    const char* enum2Str(eDataType input);
 
-    std::string getCurrentTime();
+    String getCurrentTime();
 
-    uint8_t getCheckSum(const std::string &message);
-    void appendCheckSum(std::string &message);
-    bool verityCheckSum(const std::string &message);
+    uint8_t getCheckSum(const String &message);
+    void appendCheckSum(String &message);
+    bool verityCheckSum(const String &message);
 
 }; // namespace UartMessageInterface
 

@@ -1,9 +1,9 @@
-#include <iostream>
 #include "UartMessageReceiver.h"
 
 namespace UartMessageInterface
 {
-    UartMessageReceiver::UartMessageReceiver(const std::string &message)
+    UartMessageReceiver::UartMessageReceiver(const String &message)
+        : _jsonDoc(256)
     {
         if (isUartMessage(message) == false)
         {
@@ -17,17 +17,12 @@ namespace UartMessageInterface
             return;
         }
 
-        int32_t retVal = _xmlDoc.Parse(message.c_str(), message.size() - 1);
-        if(retVal != XML_SUCCESS)
-        {
-            // throw invalid_argument("Parsing error");
-            return;
-        }
+        deserializeJson(_jsonDoc, message.c_str(), message.length() - 1);
+    }
 
-        // XMLPrinter xmlPrint;
-        // _xmlDoc.Print(&xmlPrint);
-        // std::string buf = xmlPrint.CStr();
-        // cout << buf << endl;
+    UartMessageReceiver::~UartMessageReceiver()
+    {
+        _jsonDoc.garbageCollect();
     }
 
     bool UartMessageReceiver::isMessageValid()
@@ -35,130 +30,128 @@ namespace UartMessageInterface
         return true; // TODO 내용 검사
     }
 
-    bool UartMessageReceiver::isUartMessage(const std::string &message)
+    bool UartMessageReceiver::isUartMessage(const String &message)
     {
         return true; // TODO
     }
 
     void UartMessageReceiver::processMessage()
     {
-        const XMLElement *root = _xmlDoc.RootElement();
-        if (std::string(root->Name()) == std::string("REQUEST"))
+        if (!_jsonDoc.containsKey("MsgType"))
         {
-            handleRequestMessage(root);
-        }
-        else if ((std::string(root->Name()) == std::string("RESPONSE")) ||
-                 (std::string(root->Name()) == std::string("NOTIFICATION")))
-        {
-            handleResponseMessage(root);
-        }
-    }
-
-    void UartMessageReceiver::handleRequestMessage(const XMLElement *root)
-    {
-        // cout << "REQUEST Message arrived" << endl;
-
-        const XMLElement *command = root->FirstChildElement();
-        if (std::string(command->Value()) == std::string("GET"))
-        {
-            XMLElement *elem = const_cast<XMLElement *>(command->FirstChildElement());
-            while (elem != NULL)
-            {
-                invokeRequestGet(elem);
-                elem = const_cast<XMLElement *>(elem->NextSiblingElement());
-            }
-        }
-        if (std::string(command->Value()) == std::string("SUBSCRIBE"))
-        {
-            XMLElement *elem = const_cast<XMLElement *>(command->FirstChildElement());
-            while (elem != NULL)
-            {
-                invokeSubscribe(elem);
-                elem = const_cast<XMLElement *>(elem->NextSiblingElement());
-            }
-        }
-        if (std::string(command->Value()) == std::string("UNSUBSCRIBE"))
-        {
-            XMLElement *elem = const_cast<XMLElement *>(command->FirstChildElement());
-            while (elem != NULL)
-            {
-                invokeRequestGet(elem);
-                elem = const_cast<XMLElement *>(elem->NextSiblingElement());
-            }
-        }
-    }
-
-    void UartMessageReceiver::invokeRequestGet(const XMLElement *element)
-    {
-        if (element == NULL)
             return;
+        }
 
-        eDataType type = str2EnumDataType(element->Name());
-        std::string name = element->Attribute("NAME");
-        UartMessageCallbackManagement::invokeRequestGetCallBack(type, name);
+        const char *sMessageType = _jsonDoc["MsgType"];
+
+        if (String(sMessageType).equals("Req"))
+        {
+            handleRequestMessage();
+        }
+        else if ((String(sMessageType).equals("Rsp")) ||
+                 (String(sMessageType).equals("Noti")))
+        {
+            handleResponseMessage();
+        }
     }
 
-    void UartMessageReceiver::invokeSubscribe(const XMLElement *element)
+    void UartMessageReceiver::handleRequestMessage()
     {
-        if (element == NULL)
+        if (!_jsonDoc.containsKey("Cmd"))
+        {
             return;
+        }
+        const char *sCommandType = _jsonDoc["Cmd"];
 
-        eDataType dataType = str2EnumDataType(element->Name());
-        std::string name = element->Attribute("NAME");
-        uint32_t period = element->UnsignedAttribute("PERIOD");
+        if (!_jsonDoc.containsKey("Data"))
+        {
+            return;
+        }
+        JsonArrayConst datas = _jsonDoc["Data"];
 
+        if (String(sCommandType).equals("Get"))
+        {
+            for (JsonArrayConst::iterator iter = datas.begin(); iter != datas.end(); ++iter)
+            {
+                invokeRequestGet(iter->as<JsonObjectConst>());
+            }
+        }
+        else if (String(sCommandType).equals("Subs"))
+        {
+            for (JsonArrayConst::iterator iter = datas.begin(); iter != datas.end(); ++iter)
+            {
+                invokeSubscribe(*iter);
+            }
+        }
+        else if (String(sCommandType).equals("Unsubs"))
+        {
+            for (JsonArrayConst::iterator iter = datas.begin(); iter != datas.end(); ++iter)
+            {
+                invokeUnsubscribe(*iter);
+            }
+        }
+    }
+
+    void UartMessageReceiver::invokeRequestGet(JsonObjectConst data)
+    {
+        eDataType dataType = str2EnumDataType(data["Type"]);
+        const char *name = data["Name"];
+        UartMessageCallbackManagement::invokeRequestGetCallBack(dataType, name);
+    }
+
+    void UartMessageReceiver::invokeSubscribe(JsonObjectConst data)
+    {
+        eDataType dataType = str2EnumDataType(data["Type"]);
+        const char *name = data["Name"];
+        unsigned int period = data["Period"];
         UartMessageCallbackManagement::invokeSubscribeCallBack(dataType, name, period);
     }
 
-    void UartMessageReceiver::invokeUnsubscribe(const XMLElement *element)
+    void UartMessageReceiver::invokeUnsubscribe(JsonObjectConst data)
     {
-        if (element == NULL)
-            return;
-
-        eDataType dataType = str2EnumDataType(element->Name());
-        std::string name = element->Attribute("NAME");
-
+        eDataType dataType = str2EnumDataType(data["Type"]);
+        const char *name = data["Name"];
         UartMessageCallbackManagement::invokeUnsubscribeCallBack(dataType, name);
     }
 
-    void UartMessageReceiver::handleResponseMessage(const XMLElement *root)
+    void UartMessageReceiver::handleResponseMessage()
     {
-        // cout << "RESPONSE/NOTIFICATION Message arrived" << endl;
+        if (!_jsonDoc.containsKey("Cmd"))
+            return;
+        const char *sCommandType = _jsonDoc["Cmd"];
 
-        const XMLElement *command = root->FirstChildElement();
-        if (std::string(command->Value()) == std::string("GET"))
+        if (!_jsonDoc.containsKey("Data"))
+            return;
+        JsonArrayConst datas = _jsonDoc["Data"];
+
+        if (String(sCommandType).equals("Get"))
         {
-            XMLElement *elem = const_cast<XMLElement *>(command->FirstChildElement());
-            while (elem != NULL)
+            for (JsonArrayConst::iterator iter = datas.begin(); iter != datas.end(); ++iter)
             {
-                invokeResponseGet(elem);
-                elem = const_cast<XMLElement *>(elem->NextSiblingElement());
+                invokeResponseGet(*iter);
             }
         }
     }
 
-    void UartMessageReceiver::invokeResponseGet(const XMLElement *element)
+    void UartMessageReceiver::invokeResponseGet(JsonObjectConst data)
     {
-        if (element == NULL)
-            return;
+        eDataType dataType = str2EnumDataType(data["Type"]);
+        const char *name = data["Name"];
+        const char *sValueType = data["ValType"];
+        eValueType valueType = (String(sValueType).equals("Float")) ? Float : Integer;
 
-        eDataType dataType = str2EnumDataType(element->Name());
-        std::string name = element->Attribute("NAME");
-        std::string valueType = element->Attribute("TYPE");
-        if (valueType == "DOUBLE")
+        Value v;
+        if (valueType == Float)
         {
-            Value v;
-            v.type = Double;
-            v.value.val_double = element->DoubleAttribute("VALUE");
-            UartMessageCallbackManagement::invokeResponseGetCallBack(dataType, name, v);
+            v.type = Float;
+            v.value.val_float = data["Val"];
         }
-        else // if(valueType == "INTEGER")
+        else
         {
-            Value v;
             v.type = Integer;
-            v.value.val_int = element->UnsignedAttribute("VALUE");
-            UartMessageCallbackManagement::invokeResponseGetCallBack(dataType, name, v);
+            v.value.val_int = data["Val"];
         }
-    }
 
+        UartMessageCallbackManagement::invokeResponseGetCallBack(dataType, name, v);
+    }
 }; // namespace UartMessageInterface
