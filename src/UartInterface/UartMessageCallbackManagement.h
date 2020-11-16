@@ -1,42 +1,34 @@
 #ifndef _UART_MESSAGE_CALL_BACK_MANAGEMENT_H_
 #define _UART_MESSAGE_CALL_BACK_MANAGEMENT_H_
 
-#include <string>
-#include <ctime>
-#include <map>
-#include "tinyxml2/tinyxml2.h"
+#include <Arduino.h>
 #include "UartMessageInterface.h"
-
-using namespace tinyxml2;
 
 namespace UartMessageInterface
 {
-
     class UartMessageCallbackManagement
     {
     public:
-        typedef void(*CallBackRequestGet)(eDataType, const std::string &);
-        typedef void(*CallBackResponseGet)(eDataType, const std::string &, const Value &);
-        typedef void(*CallBackSubscribe)(eDataType, const std::string &, uint32_t);
-        typedef void(*CallBackUnsubscribe)(eDataType, const std::string &);
+        typedef void(*CallBackRequestGet)(eDataType, const String &);
+        typedef void(*CallBackResponseGet)(eDataType, const String &, const Value &);
+        typedef void(*CallBackSubscribe)(eDataType, const String &, unsigned int);
+        typedef void(*CallBackUnsubscribe)(eDataType, const String &);
 
-        static void registerRequestGetCallBack(eDataType type, const std::string &name, const CallBackRequestGet &func);
-        static void invokeRequestGetCallBack(eDataType type, const std::string &name);
-        static void registerResponseGetCallBack(eDataType type, const std::string &name, const CallBackResponseGet &func);
-        static void invokeResponseGetCallBack(eDataType type, const std::string &name, const Value &value);
-        static void registerSubscribeCallBack(CallBackSubscribe &func);
-        static void invokeSubscribeCallBack(eDataType type, const std::string &name, uint32_t period);
-        static void registerUnsubscribeCallBack(CallBackUnsubscribe &func);
-        static void invokeUnsubscribeCallBack(eDataType type, const std::string &name);
+        static void registerRequestGetCallBack(const CallBackRequestGet func);
+        static void invokeRequestGetCallBack(eDataType type, const String &name);
+        static void registerResponseGetCallBack(const CallBackResponseGet func);
+        static void invokeResponseGetCallBack(eDataType type, const String &name, const Value &value);
+        static void registerSubscribeCallBack(const CallBackSubscribe func);
+        static void invokeSubscribeCallBack(eDataType type, const String &name, unsigned int period);
+        static void registerUnsubscribeCallBack(const CallBackUnsubscribe func);
+        static void invokeUnsubscribeCallBack(eDataType type, const String &name);
 
     private:
         static UartMessageCallbackManagement *_Instance;
         static UartMessageCallbackManagement &getInstance();
 
-        typedef std::map<std::tuple<eDataType, std::string>, CallBackRequestGet> CallBackListRequestGet;
-        CallBackListRequestGet _callBackListRequestGet;
-        typedef std::map<std::tuple<eDataType, std::string>, CallBackResponseGet> CallBackListResponseGet;
-        CallBackListResponseGet _callBackListResponseGet;
+        CallBackRequestGet _callBackRequestGet;
+        CallBackResponseGet _callBackResponseGet;
         CallBackSubscribe _callBackSubscribe;
         CallBackUnsubscribe _callBackUnsubscribe;
     };

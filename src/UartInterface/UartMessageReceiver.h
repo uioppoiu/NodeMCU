@@ -1,35 +1,35 @@
 #ifndef _UART_MESSAGE_RECEIVER_H_
 #define _UART_MESSAGE_RECEIVER_H_
 
-#include <string>
-#include <ctime>
-#include "tinyxml2/tinyxml2.h"
+#include <Arduino.h>
+#include <ArduinoJson.h>
 #include "UartMessageInterface.h"
 #include "UartMessageCallbackManagement.h"
-
-using namespace tinyxml2;
 
 namespace UartMessageInterface
 {
     class UartMessageReceiver
     {
     public:
-        UartMessageReceiver(const std::string &message);
+        UartMessageReceiver(const String &message);
+        ~UartMessageReceiver();
+        
         bool isMessageValid();
         void processMessage();
-        
+
     private:
-        XMLDocument _xmlDoc;
+        DynamicJsonDocument _jsonDoc;
         UartMessageReceiver();
 
-        bool isUartMessage(const std::string &message);
-        
-        void handleRequestMessage(const XMLElement *root);
-        void invokeRequestGet(const XMLElement *element);
-        void invokeSubscribe(const XMLElement *element);
-        void invokeUnsubscribe(const XMLElement *element);
-        void handleResponseMessage(const XMLElement *root);
-        void invokeResponseGet(const XMLElement *element);
+        bool isUartMessage(const String &message);
+
+        void handleRequestMessage();
+        void invokeRequestGet(JsonObjectConst data);
+        void invokeSubscribe(JsonObjectConst data);
+        void invokeUnsubscribe(JsonObjectConst data);
+
+        void handleResponseMessage();
+        void invokeResponseGet(JsonObjectConst data);
 
         // TODO Set
     };
