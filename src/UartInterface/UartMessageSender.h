@@ -89,7 +89,8 @@ namespace UartMessageInterface
         // Acknowledge
         void appendAcknowledge(eDataType type, const String &name);
 
-        String sendMessage();
+        String sendMessageStr();
+        void sendMessage();
 
     private:
         unsigned int _seqId;

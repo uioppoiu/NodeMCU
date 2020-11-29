@@ -262,7 +262,7 @@ namespace UartMessageInterface
         data["Name"] = name;
     }
 
-    String UartMessageSender::sendMessage()
+    String UartMessageSender::sendMessageStr()
     {
         String buf;
         serializeJson(_jsonDoc, buf);
@@ -270,6 +270,26 @@ namespace UartMessageInterface
 
         return buf;
         // Serial.println(buf.c_str());
+
+        _jsonDoc.garbageCollect();
+    }
+    
+    void UartMessageSender::sendMessage()
+    {
+        Serial.print("<BEGIN>");
+
+        String buf;
+        serializeJson(_jsonDoc, buf);
+        appendCheckSum(buf);
+
+        for(size_t offset = 0 ; offset < buf.length() ; )
+        {
+            size_t end = (offset + 64 <= buf.length()) ? offset + 64 : buf.length();
+            Serial.print(buf.substring(offset, end));
+            offset = end;
+        }
+
+        Serial.print("<END>\n");
 
         _jsonDoc.garbageCollect();
     }
