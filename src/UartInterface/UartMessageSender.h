@@ -71,6 +71,13 @@ namespace UartMessageInterface
             }
         }
 
+        // Notification
+        template<typename VALUE_TYPE>
+        void appendNofication(eDataType dataType, const String &name, eValueType valueType, const VALUE_TYPE &value)
+        {
+            appendResponse(dataType, name, valueType, value);
+        }
+
         // Subscribe
         void appendSubscribe(eDataType type, const String &name, unsigned int period); // All 이면 return;
         void appendSubscribeAll(eDataType type, unsigned int period);                  // 나머지 비우고 All로
@@ -78,6 +85,9 @@ namespace UartMessageInterface
         // Unsubscribe
         void appendUnsubscribe(eDataType type, const String &name); // All 이면 return;
         void appendUnsubscribeAll(eDataType type);                  // 나머지 비우고 All로
+
+        // Acknowledge
+        void appendAcknowledge(eDataType type, const String &name);
 
         String sendMessage();
 

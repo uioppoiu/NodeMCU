@@ -12,6 +12,7 @@ void onRequest(UartMessageInterface::eDataType type, const String &name)
     Serial.println("onRequest");
     Serial.println(enum2Str(type));
     Serial.println(name);
+
 }
 
 void onResponse(UartMessageInterface::eDataType type, const String &name, const UartMessageInterface::Value &value)

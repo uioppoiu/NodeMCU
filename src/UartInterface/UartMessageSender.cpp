@@ -224,6 +224,44 @@ namespace UartMessageInterface
             data["Type"] = "CtrlAll";
     }
 
+        void UartMessageSender::appendAcknowledge(eDataType dataType, const String &name)
+    {
+        if (!_jsonDoc.containsKey("Data"))
+        {
+            _jsonDoc.createNestedArray("Data");
+        }
+
+        JsonArray dataArr = _jsonDoc.getMember("Data");
+        JsonObject data = dataArr.createNestedObject();
+        switch (dataType)
+        {
+        case SensorTemperature:
+            data["Type"] = "Temp";
+            break;
+        case SensorCO2:
+            data["Type"] = "CO2";
+            break;
+        case SensorHumidity:
+            data["Type"] = "Humid";
+            break;
+        case SensorConductivity:
+            data["Type"] = "Conduct";
+            break;
+        case Control1:
+            data["Type"] = "Control1";
+            break;
+        case Control2:
+            data["Type"] = "Control2";
+            break;
+        case DateTime:
+            data["Type"] = "DateTime";
+            break;
+        default:
+            return;
+        }
+        data["Name"] = name;
+    }
+
     String UartMessageSender::sendMessage()
     {
         String buf;

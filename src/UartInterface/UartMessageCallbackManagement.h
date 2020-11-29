@@ -13,7 +13,9 @@ namespace UartMessageInterface
         typedef void(*CallBackResponseGet)(eDataType, const String &, const Value &);
         typedef void(*CallBackSubscribe)(eDataType, const String &, unsigned int);
         typedef void(*CallBackUnsubscribe)(eDataType, const String &);
-
+        typedef void(*CallBackRequestSet)(eDataType, const String &, const Value &);
+        typedef void(*CallBackAcknowledge)(eDataType, const String &);
+        
         static void registerRequestGetCallBack(const CallBackRequestGet func);
         static void invokeRequestGetCallBack(eDataType type, const String &name);
         static void registerResponseGetCallBack(const CallBackResponseGet func);
@@ -22,6 +24,8 @@ namespace UartMessageInterface
         static void invokeSubscribeCallBack(eDataType type, const String &name, unsigned int period);
         static void registerUnsubscribeCallBack(const CallBackUnsubscribe func);
         static void invokeUnsubscribeCallBack(eDataType type, const String &name);
+        static void registerAcknowledgeCallBack(const CallBackAcknowledge func);
+        static void invokeAcknowledgeCallBack(eDataType type, const String &name);
 
     private:
         static UartMessageCallbackManagement *_Instance;
@@ -31,6 +35,7 @@ namespace UartMessageInterface
         CallBackResponseGet _callBackResponseGet;
         CallBackSubscribe _callBackSubscribe;
         CallBackUnsubscribe _callBackUnsubscribe;
+        CallBackAcknowledge _callBackAcknowledge;
     };
 
 

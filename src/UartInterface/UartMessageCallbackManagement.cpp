@@ -53,4 +53,14 @@ namespace UartMessageInterface
         getInstance()._callBackUnsubscribe(dataType, name);
     }
 
+    void UartMessageCallbackManagement::registerAcknowledgeCallBack(const CallBackAcknowledge func)
+    {
+        getInstance()._callBackAcknowledge = func;
+    }
+
+    void UartMessageCallbackManagement::invokeAcknowledgeCallBack(eDataType dataType, const String &name)
+    {
+        getInstance()._callBackAcknowledge(dataType, name);
+    }
+
 }; // namespace UartMessageInterface
