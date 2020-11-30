@@ -2,7 +2,6 @@
 #define _UART_MESSAGE_SENDER_H_
 
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include "UartMessageInterface.h"
 #include "UartMessageCallbackManagement.h"
 
@@ -11,90 +10,42 @@ namespace UartMessageInterface
     class UartMessageSender
     {
     public:
-        UartMessageSender(eMessageType messageType, eCommandType commandType);
+        UartMessageSender(const unsigned char msgId);
         ~UartMessageSender();
 
-        // Request
-        void appendRequest(eDataType type, const String &name); // All 이면 return;
-        void appendRequestAll(eDataType type);                  // 나머지 비우고 All로
-
-        // Response
-        template<typename VALUE_TYPE>
-        void appendResponse(eDataType dataType, const String &name, eValueType valueType, const VALUE_TYPE &value)
+        void setSeqId(uint32_t seqId);
+        
+        template<typename T>
+        void appendData(const T& data)
         {
-            if (!_jsonDoc.containsKey("Data"))
+            if (_header->sizeOfData != 0)
             {
-                _jsonDoc.createNestedArray("Data");
+                if (_header->sizeOfData != sizeof(T))
+                {
+                    // 호환이 안 되는 Data type을 섞어서 append할 수 없다.
+                    return;
+                }
             }
 
-            JsonArray dataArr = _jsonDoc.getMember("Data");
-            JsonObject data = dataArr.createNestedObject();
-            switch (dataType)
-            {
-            case SensorTemperature:
-                data["Type"] = "Temp";
-                break;
-            case SensorCO2:
-                data["Type"] = "CO2";
-                break;
-            case SensorHumidity:
-                data["Type"] = "Humid";
-                break;
-            case SensorConductivity:
-                data["Type"] = "Conduct";
-                break;
-            case Control1:
-                data["Type"] = "Control1";
-                break;
-            case Control2:
-                data["Type"] = "Control2";
-                break;
-            case DateTime:
-                data["Type"] = "DateTime";
-                break;
-            default:
-                return;
-            }
+            memcpy(_messageBuffer + sizeof(MsgCommonHeader) + (_header->numOfData * _header->sizeOfData), &data, sizeof(T));
 
-            data["Name"] = name;
-
-            if (valueType == Float)
-            {
-                data["ValType"] = "Float";
-                data["Val"] = (float)value;
-
-            }
-            else // Integer
-            {
-                data["ValType"] = "Integer";
-                data["Val"] = (int)value;
-            }
+            _header->msgSize += sizeof(T);
+            _header->numOfData += 1;
+            _header->sizeOfData = sizeof(T);
         }
 
-        // Notification
-        template<typename VALUE_TYPE>
-        void appendNofication(eDataType dataType, const String &name, eValueType valueType, const VALUE_TYPE &value)
-        {
-            appendResponse(dataType, name, valueType, value);
-        }
+        void appendRequestGetData(unsigned char dataType, const char* name, size_t sizeOfName);
+        void appendResponseGetData(unsigned char dataType, const char* name, size_t sizeOfName, uint32_t value);
+        void appendNotificationData(unsigned char dataType, const char* name, size_t sizeOfName, uint32_t value);
+        void appendRequestSetData(unsigned char dataType, const char* name, size_t sizeOfName, uint32_t value);
+        void appendSubscribeData(unsigned char dataType, const char* name, size_t sizeOfName);
+        void appendUnsubscribeData(unsigned char dataType, const char* name, size_t sizeOfName);
 
-        // Subscribe
-        void appendSubscribe(eDataType type, const String &name, unsigned int period); // All 이면 return;
-        void appendSubscribeAll(eDataType type, unsigned int period);                  // 나머지 비우고 All로
-
-        // Unsubscribe
-        void appendUnsubscribe(eDataType type, const String &name); // All 이면 return;
-        void appendUnsubscribeAll(eDataType type);                  // 나머지 비우고 All로
-
-        // Acknowledge
-        void appendAcknowledge(eDataType type, const String &name);
-
-        String sendMessageStr();
         void sendMessage();
 
     private:
-        unsigned int _seqId;
-        DynamicJsonDocument _jsonDoc;
+        char _messageBuffer[128];
+        MsgCommonHeader* _header;
         UartMessageSender();
     };
 

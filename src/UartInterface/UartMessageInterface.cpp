@@ -3,57 +3,30 @@
 
 namespace UartMessageInterface
 {
-    eDataType str2EnumDataType(const char *input)
-    {
-        String str(input);
-        if (str.equals("SensorAll"))
-            return SensorAll;
-        if (str.equals("Temp"))
-            return SensorTemperature;
-        if (str.equals("CO2"))
-            return SensorCO2;
-        if (str.equals("Humid"))
-            return SensorHumidity;
-        if (str.equals("Conduct"))
-            return SensorConductivity;
-        if (str.equals("CtrlAll"))
-            return ControlAll;
-        if (str.equals("Control0"))
-            return Control0;
-        if (str.equals("Control1"))
-            return Control1;
-        if (str.equals("Control2"))
-            return Control2;
-        if (str.equals("DateTime"))
-            return DateTime;
-        return Invalid;
-    }
-
-    const char* enum2Str(eDataType input)
+    const char* DataTypeStr(const unsigned char input)
     {
         switch (input)
         {
-        case SensorAll:
+        case DataType::SensorAll:
             return "SensorAll";
-        case SensorTemperature:
+        case DataType::SensorTemperature:
             return "Temp";
-        case SensorCO2:
+        case DataType::SensorCO2:
             return "CO2";
-        case SensorHumidity:
+        case DataType::SensorHumidity:
             return "Humid";
-        case SensorConductivity:
+        case DataType::SensorConductivity:
             return "Conduct";
-        case ControlAll:
+        case DataType::ControlAll:
             return "CtrlAll";
-        case Control0:
+        case DataType::Control0:
             return "Control0";
-        case Control1:
+        case DataType::Control1:
             return "Control1";
-        case Control2:
+        case DataType::Control2:
             return "Control2";
-        case DateTime:
+        case DataType::DateTime:
             return "DateTime";
-        case Invalid:
         default:
             return "-";
         }
@@ -83,6 +56,20 @@ namespace UartMessageInterface
 
         // cout << "CheckSum : " << (int)checkSum << endl;
         return checkSum;
+    }
+
+    char getCheckSum(const char* str, size_t strSize)
+    {
+        uint8_t sum = 0;
+        for(size_t idx = 0 ; idx < strSize ; idx++)
+        {
+            sum = sum + (uint8_t)str[idx];
+        }
+
+        uint8_t checkSum = (sum ^ 0xFF) + 1;
+
+        // cout << "CheckSum : " << (int)checkSum << endl;
+        return (char)checkSum;
     }
 
     void appendCheckSum(String &message)

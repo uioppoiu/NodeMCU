@@ -1,4 +1,3 @@
-#include <ArduinoJson.h>
 #include <Arduino.h>
 #include "src/Button/Button.h"
 #include "src/Led/Led.h"
@@ -7,29 +6,71 @@
 #include "src/UartInterface/UartMessageSender.h"
 #include "src/UartInterface/UartMessageReceiver.h"
 
-void onRequest(UartMessageInterface::eDataType type, const String &name)
+void onRequestGet(uint32_t seqId, const UartMessageInterface::RequestGetData* dataArr, size_t arrSize)
 {
-    Serial.println("onRequest");
-    Serial.println(enum2Str(type));
-    Serial.println(name);
-}
-
-void onResponse(UartMessageInterface::eDataType type, const String &name, const UartMessageInterface::Value &value)
-{
-    Serial.println("onResponse");
-    Serial.println(enum2Str(type));
-    Serial.println(name);
-    Serial.println(value.type);
-
-    if (value.type == UartMessageInterface::Float)
+    Serial.println(__FUNCTION__);
+    for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
     {
-        Serial.println(value.value.val_float);
-    }
-    else
-    {
-        Serial.println(value.value.val_int);
+        const UartMessageInterface::RequestGetData& data = dataArr[arrIdx];
+        Serial.print("SeqId:");
+        Serial.print(seqId);
+        Serial.print(" Type:");
+        Serial.print((uint32_t)data.type);
+        Serial.print(" Name:");
+        Serial.println(data.name);
     }
 }
+
+void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData* dataArr, size_t arrSize)
+{
+    Serial.println(__FUNCTION__);
+    for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
+    {
+        const UartMessageInterface::ResponseGetData& data = dataArr[arrIdx];
+        Serial.print("SeqId:");
+        Serial.print(seqId);
+        Serial.print(" Type:");
+        Serial.print((uint32_t)data.type);
+        Serial.print(" Name:");
+        Serial.print(data.name);
+        Serial.print(" Value:");
+        Serial.println(data.value);
+    }
+}
+
+void onNotification(uint32_t seqId, const UartMessageInterface::NotificationData* dataArr, size_t arrSize)
+{
+    Serial.println(__FUNCTION__);
+    onNotification(seqId, dataArr, arrSize);
+}
+
+void onSubscribe(uint32_t seqId, const UartMessageInterface::SubscribeData* dataArr, size_t arrSize)
+{
+    Serial.println(__FUNCTION__);
+    onRequestGet(seqId, dataArr, arrSize);
+}
+
+void onUnsubscribe(uint32_t seqId, const UartMessageInterface::UnsubscribeData* dataArr, size_t arrSize)
+{
+    Serial.println(__FUNCTION__);
+    onRequestGet(seqId, dataArr, arrSize);
+}
+
+void onRequestSet(uint32_t seqId, const UartMessageInterface::RequestSetData* dataArr, size_t arrSize)
+{
+    Serial.println(__FUNCTION__);
+    onResponseGet(seqId, dataArr, arrSize);
+}
+
+void onAcknowledge(uint32_t seqId, unsigned char msgId)
+{
+    Serial.println(__FUNCTION__);
+    Serial.print("SeqId:");
+    Serial.print(seqId);
+    Serial.print("MsgId:");
+    Serial.println((uint32_t)msgId);
+}
+
 
 void setup()
 {
@@ -47,42 +88,54 @@ void setup()
     Serial.println("Initialize done...");
 
     // Example
-    // Callback 등록 (Get Request)
-    UartMessageInterface::UartMessageCallbackManagement::registerRequestGetCallBack(onRequest);
+    // Callback 등록
+    UartMessageInterface::UartMessageCallbackManagement::registerRequestGetCallBack(onRequestGet);
+    UartMessageInterface::UartMessageCallbackManagement::registerResponseGetCallBack(onResponseGet);
+    UartMessageInterface::UartMessageCallbackManagement::registerRequestSetCallBack(onRequestSet);
+    UartMessageInterface::UartMessageCallbackManagement::registerNotificationCallBack(onNotification);
+    UartMessageInterface::UartMessageCallbackManagement::registerSubscribeCallBack(onSubscribe);
+    UartMessageInterface::UartMessageCallbackManagement::registerUnsubscribeCallBack(onUnsubscribe);
+    UartMessageInterface::UartMessageCallbackManagement::registerAcknowledgeCallBack(onAcknowledge);
 
-    // Callback 등록 (Get Response)
-    UartMessageInterface::UartMessageCallbackManagement::registerResponseGetCallBack(onResponse);
+    // Get Request Message 전달
+    UartMessageInterface::UartMessageSender reqGet(UartMessageInterface::MsgId::RequestGet);
+    reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorTemperature, "ROOM", sizeof("ROOM"));
+    reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorCO2, "ROOM", sizeof("ROOM"));
+    reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorTemperature, "WATER", sizeof("WATER"));
+    reqGet.sendMessage();
 }
+
+String readBuffer;
 
 void loop()
 {
-    digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
-    delay(2000);                     // wait for a second
-    digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
-    delay(2000);                     // wait for a second
-
-    {
-        // Get Request Message 전달
-        UartMessageInterface::UartMessageSender reqTemp(UartMessageInterface::Request, UartMessageInterface::Get);
-        reqTemp.appendRequest(UartMessageInterface::SensorTemperature, "ROOM");
-        reqTemp.appendRequest(UartMessageInterface::SensorTemperature, "WATER");
-        reqTemp.appendRequest(UartMessageInterface::SensorCO2, "ROOM");
-        reqTemp.sendMessage();
-        // Serial.println(String(msgReq.c_str()));
-
-        // // Get Request Message 처리
-        // UartMessageInterface::UartMessageReceiver rcvReq(msgReq);
-        // rcvReq.processMessage();
-    }
+    // digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
+    // delay(2000);                     // wait for a second
+    // digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
+    // delay(2000);                     // wait for a second
     
-    // if (Serial.available())
-    // {
-    //     String str = Serial.readString();
-    //     Serial.println(str);
+    while (Serial.available() > 0)
+    {
+        readBuffer += (char)Serial.read();
 
-    //     // Get Response Message 처리
-    //     UartMessageInterface::UartMessageReceiver rcvRsp(str);
-    //     rcvRsp.processMessage();
-    // }
+        if (readBuffer.endsWith("<BEGIN>"))
+        {
+            // Prefix 제거. Message Buffer 초기화
+            readBuffer = "";
+        }
+        else if (readBuffer.endsWith("<END>"))
+        {
+            // Suffix 제거
+            readBuffer.remove(readBuffer.length() - 5, 5);
+            // Serial.print("Buf:");
+            // Serial.println(readBuffer);
+
+            // Message 처리
+            UartMessageInterface::UartMessageReceiver rcv(readBuffer);
+            rcv.processMessage();
+
+            // Clear Message Buffer
+            readBuffer = "";
+        }
+    }
 }
-
