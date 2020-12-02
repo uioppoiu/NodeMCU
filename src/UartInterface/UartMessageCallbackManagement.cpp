@@ -43,6 +43,12 @@ namespace UartMessageInterface
     void UartMessageCallbackManagement::invokeResponseGetCallBack(uint32_t seqId, const ResponseGetData *dataArr, size_t arrSize)
     {
         if(getInstance()._callBackResponseGet == NULL) return;
+
+        for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
+        {
+            UartMessageInterface::readEndian((ResponseGetData *)(dataArr + arrIdx));
+        }
+
         getInstance()._callBackResponseGet(seqId, dataArr, arrSize);
     }
 
@@ -54,6 +60,12 @@ namespace UartMessageInterface
     void UartMessageCallbackManagement::invokeNotificationCallBack(uint32_t seqId, const NotificationData *dataArr, size_t arrSize)
     {
         if(getInstance()._callBackNotification == NULL) return;
+        
+        for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
+        {
+            UartMessageInterface::readEndian((ResponseGetData *)(dataArr + arrIdx));
+        }
+
         getInstance()._callBackNotification(seqId, dataArr, arrSize);
     }
 
@@ -87,6 +99,12 @@ namespace UartMessageInterface
     void UartMessageCallbackManagement::invokeRequestSetCallBack(uint32_t seqId, const RequestSetData *dataArr, size_t arrSize)
     {
         if(getInstance()._callBackRequestSet == NULL) return;
+        
+        for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
+        {
+            UartMessageInterface::readEndian((ResponseGetData *)(dataArr + arrIdx));
+        }
+
         getInstance()._callBackRequestSet(seqId, dataArr, arrSize);
     }
 

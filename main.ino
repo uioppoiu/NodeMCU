@@ -74,16 +74,17 @@ void onAcknowledge(uint32_t seqId, unsigned char msgId)
 
 void setup()
 {
-    Serial.begin(115200);
+    Serial.begin(9600);
+    Serial.flush();
     Serial.println("Serial OK...");
 
-    setupLED();
+    // setupLED();
 
-    setup3ColorLED();
+    // setup3ColorLED();
 
-    Button_D6.setup();
-    Button_D7.setup();
-    Button_D8.setup();
+    // Button_D6.setup();
+    // Button_D7.setup();
+    // Button_D8.setup();
 
     Serial.println("Initialize done...");
 
@@ -96,46 +97,100 @@ void setup()
     UartMessageInterface::UartMessageCallbackManagement::registerSubscribeCallBack(onSubscribe);
     UartMessageInterface::UartMessageCallbackManagement::registerUnsubscribeCallBack(onUnsubscribe);
     UartMessageInterface::UartMessageCallbackManagement::registerAcknowledgeCallBack(onAcknowledge);
+}
 
+char readBuffer[1024] = {0,};
+size_t readBufferIdx = 0;
+
+uint32_t seqId = 0;
+
+void request()
+{
     // Get Request Message 전달
     UartMessageInterface::UartMessageSender reqGet(UartMessageInterface::MsgId::RequestGet);
+    reqGet.setSeqId(seqId++);
     reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorTemperature, "ROOM", sizeof("ROOM"));
     reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorCO2, "ROOM", sizeof("ROOM"));
     reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorTemperature, "WATER", sizeof("WATER"));
     reqGet.sendMessage();
 }
 
-String readBuffer;
+void response()
+{
+    // Get Response Message 전달
+    UartMessageInterface::UartMessageSender rspGet(UartMessageInterface::MsgId::ResponseGet);
+    rspGet.setSeqId(seqId++);
+    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorTemperature, "ROOM", sizeof("ROOM"), 111);
+    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorCO2, "ROOM", sizeof("ROOM"), 2222);
+    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorTemperature, "WATER", sizeof("WATER"), 33333);
+    rspGet.sendMessage();
+}
 
 void loop()
 {
-    // digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
-    // delay(2000);                     // wait for a second
-    // digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
-    // delay(2000);                     // wait for a second
-    
+    digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
+    delay(1000);                     // wait for a second
+    digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
+    delay(1000);                     // wait for a second
+
+    request();
+    delay(2000);
+    response();
+}
+
+uint8_t readBuffer[128] = {0,};
+size_t readBufferIdx = 0;
+void serialEvent()
+{
     while (Serial.available() > 0)
     {
-        readBuffer += (char)Serial.read();
+        readBuffer[readBufferIdx++] = (uint8_t)Serial.read();
 
-        if (readBuffer.endsWith("<BEGIN>"))
+        bool isBegin = false;
+        if (readBufferIdx >= 7)
         {
-            // Prefix 제거. Message Buffer 초기화
-            readBuffer = "";
+            if (memcmp(readBuffer + readBufferIdx - 7, "<BEGIN>", 7) == 0)
+            {
+                isBegin = true;
+            }
         }
-        else if (readBuffer.endsWith("<END>"))
-        {
-            // Suffix 제거
-            readBuffer.remove(readBuffer.length() - 5, 5);
-            // Serial.print("Buf:");
-            // Serial.println(readBuffer);
 
-            // Message 처리
-            UartMessageInterface::UartMessageReceiver rcv(readBuffer);
+        if (isBegin)
+        {
+            Serial.println("BEGIN FOUND!!");
+
+            memset(readBuffer, 0x00, sizeof(readBuffer));
+            readBufferIdx = 0;
+            continue;
+        }
+
+        bool isEnd = false;
+        if (readBufferIdx >= 5)
+        {
+            if (memcmp(readBuffer + readBufferIdx - 5, "<END>", 5) == 0)
+            {
+                isEnd = true;
+            }
+        }
+
+        if (isEnd)
+        {
+            Serial.println("END FOUND!!");
+
+            readBufferIdx = readBufferIdx - 5;
+            UartMessageInterface::UartMessageReceiver rcv(readBuffer, readBufferIdx);
             rcv.processMessage();
 
-            // Clear Message Buffer
-            readBuffer = "";
+            memset(readBuffer, 0x00, sizeof(readBuffer));
+            readBufferIdx = 0;
+
+            continue;
+        }
+
+        if(readBufferIdx == 256)
+        {
+            memset(readBuffer, 0x00, sizeof(readBuffer));
+            readBufferIdx = 0;
         }
     }
 }
