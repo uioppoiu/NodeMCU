@@ -99,11 +99,7 @@ void setup()
     UartMessageInterface::UartMessageCallbackManagement::registerAcknowledgeCallBack(onAcknowledge);
 }
 
-char readBuffer[1024] = {0,};
-size_t readBufferIdx = 0;
-
 uint32_t seqId = 0;
-
 void request()
 {
     // Get Request Message 전달
