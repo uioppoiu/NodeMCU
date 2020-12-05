@@ -41,7 +41,7 @@ void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData* 
 void onNotification(uint32_t seqId, const UartMessageInterface::NotificationData* dataArr, size_t arrSize)
 {
     Serial.println(__FUNCTION__);
-    onNotification(seqId, dataArr, arrSize);
+    onResponseGet(seqId, dataArr, arrSize);
 }
 
 void onSubscribe(uint32_t seqId, const UartMessageInterface::SubscribeData* dataArr, size_t arrSize)
@@ -71,6 +71,85 @@ void onAcknowledge(uint32_t seqId, unsigned char msgId)
     Serial.println((uint32_t)msgId);
 }
 
+uint8_t readBuffer[128] = {0,};
+size_t readBufferIdx = 0;
+
+typedef void(*LoopJob)();
+LoopJob loopJobs[5] = {0,};
+// 1. GetBuffer : listen
+// 2. CheckBuffer : checkBuffer
+// 3. ProcessBuffer : process
+
+bool isMsgReady = false;
+
+void listen()
+{
+    while (Serial.available() > 0)
+    {
+        readBuffer[readBufferIdx++] = (uint8_t)Serial.read();
+    }
+    
+    if (readBufferIdx == 128)
+    {
+        memset(readBuffer, 0x00, sizeof(readBuffer));
+        readBufferIdx = 0;
+    }
+}
+
+void checkBuffer()
+{
+    bool isBegin = false;
+    if (readBufferIdx >= 7)
+    {
+        if (memcmp(readBuffer + readBufferIdx - 7, "<BEGIN>", 7) == 0)
+        {
+            isBegin = true;
+        }
+    }
+
+    if (isBegin)
+    {
+        Serial.println("BEGIN FOUND!!");
+
+        memset(readBuffer, 0x00, sizeof(readBuffer));
+        readBufferIdx = 0;
+        return;
+    }
+
+    bool isEnd = false;
+    if (readBufferIdx >= 5)
+    {
+        if (memcmp(readBuffer + readBufferIdx - 5, "<END>", 5) == 0)
+        {
+            isEnd = true;
+        }
+    }
+
+    if (isEnd)
+    {
+        Serial.println("END FOUND!!");
+
+        readBufferIdx = readBufferIdx - 5;
+        isMsgReady=true;
+        return;
+    }
+}
+
+void process()
+{
+    if(isMsgReady)
+    {
+        readBufferIdx = readBufferIdx - 5;
+        UartMessageInterface::UartMessageReceiver rcv(readBuffer, readBufferIdx);
+        rcv.processMessage();
+
+        memset(readBuffer, 0x00, sizeof(readBuffer));
+        readBufferIdx = 0;
+
+        isMsgReady = false;
+    }
+}
+
 
 void setup()
 {
@@ -87,6 +166,11 @@ void setup()
     // Button_D8.setup();
 
     Serial.println("Initialize done...");
+
+    loopJobs[0] = &listen;
+    loopJobs[1] = &checkBuffer;
+    loopJobs[2] = &process;
+
 
     // Example
     // Callback 등록
@@ -122,71 +206,96 @@ void response()
     rspGet.sendMessage();
 }
 
+void sendTestMessage()
+{
+    static uint32_t cnt = 0;
+    if(cnt % 400 == 0)
+    {
+        request();
+        // Serial.println("Request done...");
+    }
+    else if(cnt % 400 == 200)
+    {
+        response();
+        // Serial.println("Response done...");
+    }
+
+    cnt++;
+    return;
+}
+
 void loop()
 {
-    digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
-    delay(1000);                     // wait for a second
-    digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
-    delay(1000);                     // wait for a second
+    static size_t fnIdx = 0;
+    delay(10);
 
-    request();
-    delay(2000);
-    response();
-}
-
-uint8_t readBuffer[128] = {0,};
-size_t readBufferIdx = 0;
-void serialEvent()
-{
-    while (Serial.available() > 0)
+    if (loopJobs[fnIdx] != NULL)
     {
-        readBuffer[readBufferIdx++] = (uint8_t)Serial.read();
-
-        bool isBegin = false;
-        if (readBufferIdx >= 7)
-        {
-            if (memcmp(readBuffer + readBufferIdx - 7, "<BEGIN>", 7) == 0)
-            {
-                isBegin = true;
-            }
-        }
-
-        if (isBegin)
-        {
-            Serial.println("BEGIN FOUND!!");
-
-            memset(readBuffer, 0x00, sizeof(readBuffer));
-            readBufferIdx = 0;
-            continue;
-        }
-
-        bool isEnd = false;
-        if (readBufferIdx >= 5)
-        {
-            if (memcmp(readBuffer + readBufferIdx - 5, "<END>", 5) == 0)
-            {
-                isEnd = true;
-            }
-        }
-
-        if (isEnd)
-        {
-            Serial.println("END FOUND!!");
-
-            readBufferIdx = readBufferIdx - 5;
-            UartMessageInterface::UartMessageReceiver rcv(readBuffer, readBufferIdx);
-            rcv.processMessage();
-
-            memset(readBuffer, 0x00, sizeof(readBuffer));
-            readBufferIdx = 0;
-
-            continue;
-        }
-
-        if(readBufferIdx == 256)
-        {
-            memset(readBuffer, 0x00, sizeof(readBuffer));
-            readBufferIdx = 0;
-        }
+        loopJobs[fnIdx]();
     }
+    fnIdx++;
+    if(fnIdx == 5) fnIdx = 0;
+
+    sendTestMessage();
+
+    // digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
+    // delay(1000);                     // wait for a second
+    // digitalWrite(LED_BUILTIN, LOW);  // turn the LED off by making the voltage LOW
+    // delay(1000);                     // wait for a second
 }
+
+
+// void serialEvent()
+// {
+//     while (Serial.available() > 0)
+//     {
+//         readBuffer[readBufferIdx++] = (uint8_t)Serial.read();
+
+//         bool isBegin = false;
+//         if (readBufferIdx >= 7)
+//         {
+//             if (memcmp(readBuffer + readBufferIdx - 7, "<BEGIN>", 7) == 0)
+//             {
+//                 isBegin = true;
+//             }
+//         }
+
+//         if (isBegin)
+//         {
+//             Serial.println("BEGIN FOUND!!");
+
+//             memset(readBuffer, 0x00, sizeof(readBuffer));
+//             readBufferIdx = 0;
+//             continue;
+//         }
+
+//         bool isEnd = false;
+//         if (readBufferIdx >= 5)
+//         {
+//             if (memcmp(readBuffer + readBufferIdx - 5, "<END>", 5) == 0)
+//             {
+//                 isEnd = true;
+//             }
+//         }
+
+//         if (isEnd)
+//         {
+//             Serial.println("END FOUND!!");
+
+//             readBufferIdx = readBufferIdx - 5;
+//             UartMessageInterface::UartMessageReceiver rcv(readBuffer, readBufferIdx);
+//             rcv.processMessage();
+
+//             memset(readBuffer, 0x00, sizeof(readBuffer));
+//             readBufferIdx = 0;
+
+//             continue;
+//         }
+
+//         if(readBufferIdx == 256)
+//         {
+//             memset(readBuffer, 0x00, sizeof(readBuffer));
+//             readBufferIdx = 0;
+//         }
+//     }
+// }
