@@ -77,6 +77,7 @@ void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData* 
         // dbMsg += String(data.value);
     }
 
+
     Serial.print("URL:");
     Serial.println(dbMsg);
 
