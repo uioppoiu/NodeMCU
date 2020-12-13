@@ -8,19 +8,19 @@
 #include "src/UartInterface/UartMessageSender.h"
 #include "src/UartInterface/UartMessageReceiver.h"
 
-const char* WIFI_ID ="ANH_2.4G";
-const char* WIFI_PASS = "12345678";
-const char* URL_BASE = "http://anhands.synology.me/insert.php";
+const char *WIFI_ID = "ANH_2.4G";
+const char *WIFI_PASS = "12345678";
+const char *URL_BASE = "http://anhands.synology.me/insert.php";
 
 WiFiClient client;
 HTTPClient http;
 
-void onRequestGet(uint32_t seqId, const UartMessageInterface::RequestGetData* dataArr, size_t arrSize)
+void onRequestGet(uint32_t seqId, const UartMessageInterface::RequestGetData *dataArr, size_t arrSize)
 {
     Serial.println(__FUNCTION__);
-    for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
+    for (size_t arrIdx = 0; arrIdx < arrSize; arrIdx++)
     {
-        const UartMessageInterface::RequestGetData& data = dataArr[arrIdx];
+        const UartMessageInterface::RequestGetData &data = dataArr[arrIdx];
         Serial.print("SeqId:");
         Serial.print(seqId);
         Serial.print(" Type:");
@@ -30,9 +30,9 @@ void onRequestGet(uint32_t seqId, const UartMessageInterface::RequestGetData* da
     }
 }
 
-const char* sensorTypeStr[] = {"humidity", "co2", "temperature", "cond", "ph", "watertemp"};
+const char *sensorTypeStr[] = {"humidity", "co2", "temperature", "cond", "ph", "watertemp"};
 
-void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData* dataArr, size_t arrSize)
+void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData *dataArr, size_t arrSize)
 {
     Serial.println(__FUNCTION__);
 
@@ -41,9 +41,9 @@ void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData* 
 
     String dbMsg(URL_BASE);
 
-    for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
+    for (size_t arrIdx = 0; arrIdx < arrSize; arrIdx++)
     {
-        const UartMessageInterface::ResponseGetData& data = dataArr[arrIdx];
+        const UartMessageInterface::ResponseGetData &data = dataArr[arrIdx];
         Serial.print(" Type:");
         Serial.print((uint32_t)data.type);
         Serial.print(" Name:");
@@ -52,31 +52,70 @@ void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData* 
         Serial.println(data.value);
     }
 
-    for (size_t arrIdx = 0; arrIdx < 6; arrIdx++)
-    {
-        dbMsg += ((arrIdx == 0) ? "?" : "&");
-        dbMsg += sensorTypeStr[arrIdx];
-        dbMsg += "=";
-        dbMsg += String(seqId + arrIdx);
-        
-        // switch(data.type)
-        // {
-        //     case UartMessageInterface::DataType::SensorTemperature:
-        //     dbMsg += "temperature=";
-        //     break;
-        //     case UartMessageInterface::DataType::SensorCO2:
-        //     dbMsg += "co2=";
-        //     break;
-        //     case UartMessageInterface::DataType::SensorConductivity:
-        //     dbMsg += "ph=";
-        //     break;
-        //     case UartMessageInterface::DataType::SensorHumidity:
-        //     dbMsg += "humidity=";
-        //     break;
-        // }
-        // dbMsg += String(data.value);
-    }
+    int sensorType[6] = {
+        0,
+    };
+    int sensorValue[6] = {
+        0,
+    };
 
+    for (size_t arrIdx = 0; arrIdx < arrSize; arrIdx++)
+    {
+        const UartMessageInterface::ResponseGetData &data = dataArr[arrIdx];
+
+        bool noaction = false;
+        for (int i = 0; i < 6; i++)
+        {
+            if(sensorType[i] == 0)
+            {
+                sensorType[i] = data.type;
+                break;
+            }
+
+            if (sensorType[i] == data.type)
+            {
+                noaction = true;
+                break;
+            }
+        }
+
+        if (noaction)
+            continue;
+
+        dbMsg += ((arrIdx == 0) ? "?" : "&");
+        // dbMsg += sensorTypeStr[arrIdx];
+        // dbMsg += "=";
+        // dbMsg += String(seqId + arrIdx);
+
+        switch (data.type)
+        {
+        case UartMessageInterface::DataType::SensorTemperature:
+        {
+            if (String(data.name) == String("ROOM"))
+            {
+                dbMsg += "temperature=";
+            }
+            else
+            {
+                dbMsg += "watertemp=";
+            }
+        }
+        break;
+        case UartMessageInterface::DataType::SensorCO2:
+            dbMsg += "co2=";
+            break;
+        case UartMessageInterface::DataType::SensorConductivity:
+            dbMsg += "cond=";
+            break;
+        case UartMessageInterface::DataType::SensorHumidity:
+            dbMsg += "humidity=";
+            break;
+        case UartMessageInterface::DataType::SensorPH:
+            dbMsg += "ph=";
+            break;
+        }
+        dbMsg += String(data.value);
+    }
 
     Serial.print("URL:");
     Serial.println(dbMsg);
@@ -89,25 +128,25 @@ void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData* 
     Serial.printf("Ret:%d. Done\n", ret);
 }
 
-void onNotification(uint32_t seqId, const UartMessageInterface::NotificationData* dataArr, size_t arrSize)
+void onNotification(uint32_t seqId, const UartMessageInterface::NotificationData *dataArr, size_t arrSize)
 {
     Serial.println(__FUNCTION__);
     onResponseGet(seqId, dataArr, arrSize);
 }
 
-void onSubscribe(uint32_t seqId, const UartMessageInterface::SubscribeData* dataArr, size_t arrSize)
+void onSubscribe(uint32_t seqId, const UartMessageInterface::SubscribeData *dataArr, size_t arrSize)
 {
     Serial.println(__FUNCTION__);
     onRequestGet(seqId, dataArr, arrSize);
 }
 
-void onUnsubscribe(uint32_t seqId, const UartMessageInterface::UnsubscribeData* dataArr, size_t arrSize)
+void onUnsubscribe(uint32_t seqId, const UartMessageInterface::UnsubscribeData *dataArr, size_t arrSize)
 {
     Serial.println(__FUNCTION__);
     onRequestGet(seqId, dataArr, arrSize);
 }
 
-void onRequestSet(uint32_t seqId, const UartMessageInterface::RequestSetData* dataArr, size_t arrSize)
+void onRequestSet(uint32_t seqId, const UartMessageInterface::RequestSetData *dataArr, size_t arrSize)
 {
     Serial.println(__FUNCTION__);
     onResponseGet(seqId, dataArr, arrSize);
@@ -122,7 +161,9 @@ void onAcknowledge(uint32_t seqId, unsigned char msgId)
     Serial.println((uint32_t)msgId);
 }
 
-uint8_t readBuffer[256] = {0,};
+uint8_t readBuffer[256] = {
+    0,
+};
 size_t readBufferIdx = 0;
 
 // typedef void(*LoopJob)();
@@ -139,7 +180,7 @@ size_t readBufferIdx = 0;
 //     {
 //         readBuffer[readBufferIdx++] = (uint8_t)Serial.read();
 //     }
-    
+
 //     if (readBufferIdx == 128)
 //     {
 //         memset(readBuffer, 0x00, sizeof(readBuffer));
@@ -201,7 +242,6 @@ size_t readBufferIdx = 0;
 //     }
 // }
 
-
 void setup()
 {
     Serial.begin(115200);
@@ -224,13 +264,13 @@ void setup()
 
     WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_ID, WIFI_PASS);
-	while (WiFi.status() != WL_CONNECTED) {
-		delay(500);
-		Serial.print(".");
-	}
-	Serial.print("IP address: ");
-	Serial.println(WiFi.localIP());
-
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
 
     // Example
     // Callback 등록
@@ -348,11 +388,10 @@ void loop()
             continue;
         }
 
-        if(readBufferIdx == 256)
+        if (readBufferIdx == 256)
         {
             memset(readBuffer, 0x00, sizeof(readBuffer));
             readBufferIdx = 0;
         }
     }
 }
-
