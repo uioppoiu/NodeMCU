@@ -49,7 +49,7 @@ namespace UartMessageInterface
         void sendMessage();
 
     private:
-        uint8_t _messageBuffer[128];
+        uint8_t _messageBuffer[256];
         MsgCommonHeader* _header;
         UartMessageSender();
     };

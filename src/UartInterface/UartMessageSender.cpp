@@ -31,8 +31,6 @@ namespace UartMessageInterface
         Serial.write("<BEGIN>");
         Serial.write(_messageBuffer, _header->msgSize);
         Serial.write("<END>");
-
-        Serial.flush();
     }
 
     void UartMessageSender::appendRequestGetDataCommon(unsigned char dataType, const char *name, size_t sizeOfName)
