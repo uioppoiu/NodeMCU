@@ -1,239 +1,116 @@
 #include "Arduino.h"
 #include "UartMessageSender.h"
+#include "UartEndian.h"
 
 namespace UartMessageInterface
 {
-    UartMessageSender::UartMessageSender(eMessageType messageType, eCommandType commandType)
-        : _seqId(0), _jsonDoc(256)
-    {
-        switch (messageType)
-        {
-        case Request:
-            _jsonDoc["MsgType"] = "Req";
-            break;
-        case Response:
-            _jsonDoc["MsgType"] = "Rsp";
-            break;
-        case Notification:
-            _jsonDoc["MsgType"] = "Noti";
-            break;
-        case Acknowledge:
-            _jsonDoc["MsgType"] = "Ack";
-            break;
-        default:
-            // throw invalid_argument("Invalid MessageType");
-            return;
-        }
 
-        switch (commandType)
-        {
-        case Get:
-            _jsonDoc["Cmd"] = "Get";
-            break;
-        case Set:
-            _jsonDoc["Cmd"] = "Set";
-            break;
-        case Subscribe:
-            _jsonDoc["Cmd"] = "Subs";
-            break;
-        case Unsubscribe:
-            _jsonDoc["Cmd"] = "Unsubs";
-            break;
-        default:
-            // throw invalid_argument("Invalid CommandType");
-            return;
-        }
+    UartMessageSender::UartMessageSender(const unsigned char msgId)
+        : _header((MsgCommonHeader *)_messageBuffer)
+    {
+        memset(_messageBuffer, 0x00, sizeof(_messageBuffer));
+        _header->msgId = msgId;
+        _header->msgSize = sizeof(MsgCommonHeader);
     }
 
     UartMessageSender::~UartMessageSender()
     {
-        _jsonDoc.garbageCollect();
     }
 
-    void UartMessageSender::appendRequestAll(eDataType type)
+    void UartMessageSender::setSeqId(uint32_t seqId)
     {
-        if (type != SensorAll || type != ControlAll)
-            return;
-
-        _jsonDoc.remove("Data");
-        JsonArray dataArr = _jsonDoc.createNestedArray("Data");
-        JsonObject data = dataArr.createNestedObject();
-
-        if (type == SensorAll)
-            data["Type"] = "SensorAll";
-        else if (type == ControlAll)
-            data["Type"] = "CtrlAll";
+        _header->seqId = htonl(seqId);
     }
 
-    void UartMessageSender::appendRequest(eDataType dataType, const String &name)
+    void UartMessageSender::sendMessage()
     {
-        if (!_jsonDoc.containsKey("Data"))
-        {
-            _jsonDoc.createNestedArray("Data");
-        }
+        uint8_t checkSum = getCheckSum(_messageBuffer, _header->msgSize);
+        _messageBuffer[_header->msgSize] = checkSum;
+        _header->msgSize += 1;
 
-        JsonArray dataArr = _jsonDoc.getMember("Data");
-        JsonObject data = dataArr.createNestedObject();
-        switch (dataType)
-        {
-        case SensorTemperature:
-            data["Type"] = "Temp";
-            break;
-        case SensorCO2:
-            data["Type"] = "CO2";
-            break;
-        case SensorHumidity:
-            data["Type"] = "Humid";
-            break;
-        case SensorConductivity:
-            data["Type"] = "Conduct";
-            break;
-        case Control1:
-            data["Type"] = "Control1";
-            break;
-        case Control2:
-            data["Type"] = "Control2";
-            break;
-        case DateTime:
-            data["Type"] = "DateTime";
-            break;
-        case SensorAll:
-        case ControlAll:
-            appendRequestAll(dataType);
-            return;
-        default:
-            return;
-        }
-        data["Name"] = name;
+        Serial.write("<BEGIN>");
+        Serial.write(_messageBuffer, _header->msgSize);
+        Serial.write("<END>");
+
+        Serial.flush();
     }
 
-    void UartMessageSender::appendSubscribe(eDataType dataType, const String &name, unsigned int period)
+    void UartMessageSender::appendRequestGetDataCommon(unsigned char dataType, const char *name, size_t sizeOfName)
     {
-        if (!_jsonDoc.containsKey("Data"))
-        {
-            _jsonDoc.createNestedArray("Data");
-        }
+        RequestGetData data;
+        memset(&data, 0x00, sizeof(RequestGetData));
 
-        JsonArray dataArr = _jsonDoc.getMember("Data");
-        JsonObject data = dataArr.createNestedObject();
-        switch (dataType)
-        {
-        case SensorTemperature:
-            data["Type"] = "Temp";
-            break;
-        case SensorCO2:
-            data["Type"] = "CO2";
-            break;
-        case SensorHumidity:
-            data["Type"] = "Humid";
-            break;
-        case SensorConductivity:
-            data["Type"] = "Conduct";
-            break;
-        case Control1:
-            data["Type"] = "Control1";
-            break;
-        case Control2:
-            data["Type"] = "Control2";
-            break;
-        case DateTime:
-            data["Type"] = "DateTime";
-            break;
-        case SensorAll:
-        case ControlAll:
-            appendSubscribeAll(dataType, period);
-            return;
-        default:
-            return;
-        }
-        data["Name"] = name;
-        data["Period"] = period;
+        data.type = dataType;
+
+        memset(data.name, 0x00, sizeof(data.name));
+        size_t strSize = (sizeOfName > sizeof(data.name)) ? (sizeof(data.name)) : sizeOfName;
+        memcpy(data.name, name, strSize);
+
+        appendData(data);
     }
 
-    void UartMessageSender::appendSubscribeAll(eDataType dataType, unsigned int period)
+    void UartMessageSender::appendRequestGetData(unsigned char dataType, const char *name, size_t sizeOfName)
     {
-        if (dataType != SensorAll || dataType != ControlAll)
+        if (_header->msgId != UartMessageInterface::MsgId::RequestGet)
             return;
 
-        _jsonDoc.remove("Data");
-        JsonArray dataArr = _jsonDoc.createNestedArray("Data");
-        JsonObject data = dataArr.createNestedObject();
-
-        if (dataType == SensorAll)
-            data["Type"] = "SensorAll";
-        else if (dataType == ControlAll)
-            data["Type"] = "CtrlAll";
-
-        data["Period"] = period;        
+        appendRequestGetDataCommon(dataType, name, sizeOfName);
     }
 
-    void UartMessageSender::appendUnsubscribe(eDataType dataType, const String &name)
+    void UartMessageSender::appendSubscribeData(unsigned char dataType, const char *name, size_t sizeOfName)
     {
-        if (!_jsonDoc.containsKey("Data"))
-        {
-            _jsonDoc.createNestedArray("Data");
-        }
+        if (_header->msgId != UartMessageInterface::MsgId::Subscribe)
+            return;
 
-        JsonArray dataArr = _jsonDoc.getMember("Data");
-        JsonObject data = dataArr.createNestedObject();
-        switch (dataType)
-        {
-        case SensorTemperature:
-            data["Type"] = "Temp";
-            break;
-        case SensorCO2:
-            data["Type"] = "CO2";
-            break;
-        case SensorHumidity:
-            data["Type"] = "Humid";
-            break;
-        case SensorConductivity:
-            data["Type"] = "Conduct";
-            break;
-        case Control1:
-            data["Type"] = "Control1";
-            break;
-        case Control2:
-            data["Type"] = "Control2";
-            break;
-        case DateTime:
-            data["Type"] = "DateTime";
-            break;
-        case SensorAll:
-        case ControlAll:
-            appendUnsubscribeAll(dataType);
-            return;
-        default:
-            return;
-        }
-        data["Name"] = name;
+        appendRequestGetDataCommon(dataType, name, sizeOfName);
     }
 
-    void UartMessageSender::appendUnsubscribeAll(eDataType dataType)
+    void UartMessageSender::appendUnsubscribeData(unsigned char dataType, const char *name, size_t sizeOfName)
     {
-        if (dataType != SensorAll || dataType != ControlAll)
+        if (_header->msgId != UartMessageInterface::MsgId::Unsubscribe)
             return;
 
-        _jsonDoc.remove("Data");
-        JsonArray dataArr = _jsonDoc.createNestedArray("Data");
-        JsonObject data = dataArr.createNestedObject();
-
-        if (dataType == SensorAll)
-            data["Type"] = "SensorAll";
-        else if (dataType == ControlAll)
-            data["Type"] = "CtrlAll";
+        appendRequestGetDataCommon(dataType, name, sizeOfName);
     }
 
-    String UartMessageSender::sendMessage()
+    void UartMessageSender::appendResponseGetDataCommon(unsigned char dataType, const char *name, size_t sizeOfName, uint32_t value)
     {
-        String buf;
-        serializeJson(_jsonDoc, buf);
-        appendCheckSum(buf);
+        ResponseGetData data;
+        memset(&data, 0x00, sizeof(ResponseGetData));
 
-        return buf;
-        // Serial.println(buf.c_str());
+        data.type = dataType;
 
-        _jsonDoc.garbageCollect();
+        memset(data.name, 0x00, sizeof(data.name));
+        size_t strSize = (sizeOfName > sizeof(data.name)) ? (sizeof(data.name)) : sizeOfName;
+        memcpy(data.name, name, strSize);
+
+        data.value = htonl(value);
+
+        appendData(data);
+    }
+
+    void UartMessageSender::appendResponseGetData(unsigned char dataType, const char *name, size_t sizeOfName, uint32_t value)
+    {
+        if (_header->msgId != UartMessageInterface::MsgId::ResponseGet)
+            return;
+
+        appendResponseGetDataCommon(dataType, name, sizeOfName, value);
+    }
+
+    void UartMessageSender::appendNotificationData(unsigned char dataType, const char *name, size_t sizeOfName, uint32_t value)
+    {
+        if (_header->msgId != UartMessageInterface::MsgId::Notification)
+            return;
+
+        appendResponseGetDataCommon(dataType, name, sizeOfName, value);
+    }
+
+    void UartMessageSender::appendRequestSetData(unsigned char dataType, const char *name, size_t sizeOfName, uint32_t value)
+    {
+        if (_header->msgId != UartMessageInterface::MsgId::RequestSet)
+            return;
+
+        appendResponseGetDataCommon(dataType, name, sizeOfName, value);
     }
 
 }; // namespace UartMessageInterface

@@ -2,7 +2,6 @@
 #define _UART_MESSAGE_RECEIVER_H_
 
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include "UartMessageInterface.h"
 #include "UartMessageCallbackManagement.h"
 
@@ -11,27 +10,15 @@ namespace UartMessageInterface
     class UartMessageReceiver
     {
     public:
-        UartMessageReceiver(const String &message);
+        UartMessageReceiver(const uint8_t* msg, size_t msgSize);
         ~UartMessageReceiver();
         
         bool isMessageValid();
         void processMessage();
 
     private:
-        DynamicJsonDocument _jsonDoc;
+        uint8_t _message[128];
         UartMessageReceiver();
-
-        bool isUartMessage(const String &message);
-
-        void handleRequestMessage();
-        void invokeRequestGet(JsonObjectConst data);
-        void invokeSubscribe(JsonObjectConst data);
-        void invokeUnsubscribe(JsonObjectConst data);
-
-        void handleResponseMessage();
-        void invokeResponseGet(JsonObjectConst data);
-
-        // TODO Set
     };
 
 }; // namespace UartMessageInterface
