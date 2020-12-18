@@ -17,7 +17,7 @@ namespace UartMessageInterface
         void processMessage();
 
     private:
-        uint8_t _message[256];
+        uint8_t _message[128];
         UartMessageReceiver();
     };
 

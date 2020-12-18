@@ -26,35 +26,30 @@ void onRequestGet(uint32_t seqId, const UartMessageInterface::RequestGetData *da
         const UartMessageInterface::RequestGetData &msg = dataArr[arrIdx];
         switch (msg.type)
         {
-        case UartMessageInterface::DataType::SensorTemperature:
-        {
-            if (memcmp(msg.name, "WATER", sizeof("WATER")) == 0)
-            {
-                rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorTemperature, "WATER", sizeof("WATER"), 1000 + v);
-            }
-            else
-            {
-                rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorTemperature, "ROOM", sizeof("ROOM"), 2000 + v);
-            }
-        }
-        break;
+        case UartMessageInterface::DataType::SensorRoomTemperature:
+            rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorRoomTemperature, 2000 + v);
+            break;
+        case UartMessageInterface::DataType::SensorWaterTemperature:
+            rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorRoomTemperature, 2000 + v);
+            break;
         case UartMessageInterface::DataType::SensorCO2:
-            rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorCO2, "CO2", sizeof("CO2"), 3000 + v);
+            rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorCO2, 3000 + v);
             break;
         case UartMessageInterface::DataType::SensorHumidity:
-            rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorHumidity, "HUMID", sizeof("HUMID"), 4000 + v);
+            rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorHumidity, 4000 + v);
             break;
         case UartMessageInterface::DataType::SensorConductivity:
-            rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorConductivity, "CONDUC", sizeof("CONDUC"), 5000 + v);
+            rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorConductivity, 5000 + v);
             break;
         case UartMessageInterface::DataType::SensorPH:
-            rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorPH, "PH", sizeof("PH"), 6000 + v);
+            rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorPH, 6000 + v);
             break;
         default:
             break;
         }
     }
 
+    delay(100);
     rspGet.sendMessage();
 }
 
@@ -81,18 +76,12 @@ void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData *
 
         switch (msg.type)
         {
-        case UartMessageInterface::DataType::SensorTemperature:
-        {
-            if (memcmp(msg.name, "WATER", sizeof("WATER")) == 0)
-            {
-                sensorVal[IDX_TEMP_WATER] = msg.value;
-            }
-            else
-            {
-                sensorVal[IDX_TEMP_ROOM] = msg.value;
-            }
-        }
-        break;
+        case UartMessageInterface::DataType::SensorWaterTemperature:
+            sensorVal[IDX_TEMP_WATER] = msg.value;
+            break;
+        case UartMessageInterface::DataType::SensorRoomTemperature:
+            sensorVal[IDX_TEMP_ROOM] = msg.value;
+            break;
         case UartMessageInterface::DataType::SensorCO2:
             sensorVal[IDX_CO2] = msg.value;
             break;
@@ -145,7 +134,7 @@ void onAcknowledge(uint32_t seqId, unsigned char msgId)
     Serial.println((uint32_t)msgId);
 }
 
-uint8_t readBuffer[256] = {0,};
+uint8_t readBuffer[64] = {0,};
 size_t readBufferIdx = 0;
 
 void setup()
@@ -190,12 +179,12 @@ void sendTestMessage()
     static int v = 0;
     UartMessageInterface::UartMessageSender rspGet(UartMessageInterface::MsgId::ResponseGet);
     rspGet.setSeqId(v++);
-    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorTemperature, "WATER", sizeof("WATER"), 1000 + v);
-    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorTemperature, "ROOM", sizeof("ROOM"), 2000 + v);
-    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorCO2, "CO2", sizeof("CO2"), 3000 + v);
-    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorHumidity, "HUMID", sizeof("HUMID"), 4000 + v);
-    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorConductivity, "CONDUC", sizeof("CONDUC"), 5000 + v);
-    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorPH, "PH", sizeof("PH"), 6000 + v);
+    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorWaterTemperature, 1000 + v);
+    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorRoomTemperature, 2000 + v);
+    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorCO2, 3000 + v);
+    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorHumidity, 4000 + v);
+    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorConductivity, 5000 + v);
+    rspGet.appendResponseGetData(UartMessageInterface::DataType::SensorPH, 6000 + v);
     rspGet.sendMessage();
 }
 
@@ -209,7 +198,6 @@ void loop()
 
     if(Serial.available() > 0) serialEvent();
 }
-
 
 void serialEvent()
 {
