@@ -56,6 +56,7 @@ namespace UartMessageInterface
         static const uint8_t Control1 = 0x11;
         static const uint8_t Control2 = 0x12;
         static const uint8_t Control3 = 0x13;
+        static const uint8_t Control4 = 0x14;
         static const uint8_t DateTime = 0x20;
     };
 

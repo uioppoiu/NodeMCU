@@ -12,9 +12,6 @@ const char *WIFI_ID = "ANH_2.4G";
 const char *WIFI_PASS = "12345678";
 const char *URL_BASE = "http://anhands.synology.me/insert.php";
 
-WiFiClient client;
-HTTPClient http;
-
 void onRequestGet(uint32_t seqId, const UartMessageInterface::RequestGetData *dataArr, size_t arrSize)
 {
     // static int v = 0;
@@ -54,6 +51,25 @@ void onRequestGet(uint32_t seqId, const UartMessageInterface::RequestGetData *da
 }
 
 void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData *dataArr, size_t arrSize)
+{
+    static bool ledstate = false;
+    digitalWrite(LED_BUILTIN, ledstate);
+    ledstate = !ledstate;
+
+    Serial.println(__FUNCTION__);
+    for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
+    {
+        const UartMessageInterface::ResponseGetData& data = dataArr[arrIdx];
+        Serial.print("SeqId:");
+        Serial.print(seqId);
+        Serial.print(" Type:");
+        Serial.print((uint32_t)data.type);
+        Serial.print(" Value:");
+        Serial.println(data.value);
+    }
+}
+
+void onNotification(uint32_t seqId, const UartMessageInterface::NotificationData *dataArr, size_t arrSize)
 {
     static bool ledstate = false;
     digitalWrite(LED_BUILTIN, ledstate);
@@ -135,12 +151,6 @@ void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData *
     // // Serial.printf("Ret:%d. Done\n", ret);
 }
 
-void onNotification(uint32_t seqId, const UartMessageInterface::NotificationData *dataArr, size_t arrSize)
-{
-    Serial.println(__FUNCTION__);
-    onResponseGet(seqId, dataArr, arrSize);
-}
-
 void onAcknowledge(uint32_t seqId, unsigned char msgId)
 {
     Serial.println(__FUNCTION__);
@@ -173,15 +183,15 @@ void setup()
     // loopJobs[1] = &checkBuffer;
     // loopJobs[2] = &process;
 
-    // WiFi.mode(WIFI_STA);
-    // WiFi.begin(WIFI_ID, WIFI_PASS);
-    // while (WiFi.status() != WL_CONNECTED)
-    // {
-    //     delay(500);
-    //     Serial.print(".");
-    // }
-    // Serial.print("IP address: ");
-    // Serial.println(WiFi.localIP());
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_ID, WIFI_PASS);
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
 
     // Example
     // Callback 등록
@@ -204,7 +214,46 @@ void sendTestMessage()
     rspGet.sendMessage();
 }
 
-int sequence = 0;
+void sendControl(String data)
+{
+    int ctrl1 = 0;
+    int ctrl2 = 0;
+    int ctrl3 = 0;
+    int ctrl4 = 0;
+    sscanf(data.c_str(), "%d %d %d %d", &ctrl1, &ctrl2, &ctrl3, &ctrl4);
+
+    // Serial.println(ctrl1);
+    // Serial.println(ctrl2);
+    // Serial.println(ctrl3);
+    // Serial.println(ctrl4);
+
+    UartMessageInterface::UartMessageSender reqSet(UartMessageInterface::MsgId::RequestSet);
+    reqSet.setSeqId(999);
+    reqSet.appendRequestSetData(UartMessageInterface::DataType::Control1, ctrl1);
+    reqSet.appendRequestSetData(UartMessageInterface::DataType::Control2, ctrl2);
+    reqSet.appendRequestSetData(UartMessageInterface::DataType::Control3, ctrl3);
+    reqSet.appendRequestSetData(UartMessageInterface::DataType::Control4, ctrl4);
+    reqSet.sendMessage();
+}
+
+void getControlFromWeb()
+{
+    Serial.println(__FUNCTION__);
+    String url("http://anhands.synology.me/setting.php");
+
+    WiFiClient client;
+    HTTPClient http;
+    http.begin(client, url);
+    http.setTimeout(10000);
+    int httpCode = http.GET();
+    if (httpCode == HTTP_CODE_OK)
+    {
+        String payload = http.getString();
+        // Serial.println(payload);
+        sendControl(payload);
+    }
+    http.end();
+}
 
 void defaultAction()
 {
@@ -219,25 +268,27 @@ void loop()
     // delay(5000);
     // sendTestMessage();
 
+    static int sequence = 0;
+
     defaultAction();
     const int currentSequence = sequence;
     sequence++;
-    sequence = sequence % 20;
+    sequence = sequence % 3000;
 
-    delay(100);
+    delay(1);
 
     if (currentSequence == 0)
     {
-        static uint32_t seqId = 10000;
-        UartMessageInterface::UartMessageSender rspGet(UartMessageInterface::MsgId::RequestGet);
-        rspGet.setSeqId(seqId++);
-        rspGet.appendRequestGetData(UartMessageInterface::DataType::SensorPH);
-        rspGet.appendRequestGetData(UartMessageInterface::DataType::SensorHumidity);
-        rspGet.appendRequestGetData(UartMessageInterface::DataType::SensorCO2);
-        rspGet.appendRequestGetData(UartMessageInterface::DataType::SensorRoomTemperature);
-        rspGet.appendRequestGetData(UartMessageInterface::DataType::SensorWaterTemperature);
-        rspGet.appendRequestGetData(UartMessageInterface::DataType::SensorConductivity);
-        rspGet.sendMessage();
+        // static uint32_t seqId = 10000;
+        // UartMessageInterface::UartMessageSender reqGet(UartMessageInterface::MsgId::RequestGet);
+        // reqGet.setSeqId(seqId++);
+        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorPH);
+        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorHumidity);
+        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorCO2);
+        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorRoomTemperature);
+        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorWaterTemperature);
+        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorConductivity);
+        // reqGet.sendMessage();
         return;
     }
 
@@ -247,9 +298,15 @@ void loop()
         return;
     }
 
-    if (currentSequence == 6)
+    if (currentSequence == 401)
     {
         digitalWrite(LED_BUILTIN, LOW); // turn the LED on (HIGH is the voltage level)
+        return;
+    }
+
+    if (currentSequence == 500)
+    {
+        getControlFromWeb();
         return;
     }
 }
@@ -271,7 +328,7 @@ void serialEventHandler()
 
         if (isBegin)
         {
-            Serial.println("Begin FOUND!!");
+            // Serial.println("Begin FOUND!!");
 
             memset(readBuffer, 0x00, sizeof(readBuffer));
             readBufferIdx = 0;
@@ -289,7 +346,7 @@ void serialEventHandler()
 
         if (isEnd)
         {
-            Serial.println("End FOUND!!");
+            // Serial.println("End FOUND!!");
 
             readBufferIdx = readBufferIdx - 5;
             UartMessageInterface::UartMessageReceiver rcv(readBuffer, readBufferIdx);
