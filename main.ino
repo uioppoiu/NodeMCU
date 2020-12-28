@@ -12,6 +12,7 @@ const char *WIFI_ID = "ANH_2.4G";
 const char *WIFI_PASS = "12345678";
 const char *URL_BASE = "http://anhands.synology.me/insert.php";
 
+
 void onRequestGet(uint32_t seqId, const UartMessageInterface::RequestGetData *dataArr, size_t arrSize)
 {
     // static int v = 0;
@@ -87,68 +88,70 @@ void onNotification(uint32_t seqId, const UartMessageInterface::NotificationData
         Serial.println(data.value);
     }
 
-    // enum
-    // {
-    //     IDX_HUMIDITY = 0,
-    //     IDX_CO2 = 1,
-    //     IDX_TEMP_ROOM = 2,
-    //     IDX_CONDUCTIVITY = 3,
-    //     IDX_PH = 4,
-    //     IDX_TEMP_WATER = 5,
-    // };
-    // const size_t NumOfSensor = 6;
-    // const char *sensorTypeStr[NumOfSensor] = {"humidity", "co2", "temperature", "cond", "ph", "watertemp"};
-    // uint32_t sensorVal[NumOfSensor] = {
-    //     0,
-    // };
+    enum
+    {
+        IDX_HUMIDITY = 0,
+        IDX_CO2 = 1,
+        IDX_TEMP_ROOM = 2,
+        IDX_CONDUCTIVITY = 3,
+        IDX_PH = 4,
+        IDX_TEMP_WATER = 5,
+    };
+    const size_t NumOfSensor = 6;
+    const char *sensorTypeStr[NumOfSensor] = {"humidity", "co2", "temperature", "cond", "ph", "watertemp"};
+    uint32_t sensorVal[NumOfSensor] = {
+        0,
+    };
 
-    // for (size_t arrIdx = 0; arrIdx < arrSize; arrIdx++)
-    // {
-    //     const UartMessageInterface::ResponseGetData &msg = dataArr[arrIdx];
+    for (size_t arrIdx = 0; arrIdx < arrSize; arrIdx++)
+    {
+        const UartMessageInterface::ResponseGetData &msg = dataArr[arrIdx];
 
-    //     switch (msg.type)
-    //     {
-    //     case UartMessageInterface::DataType::SensorWaterTemperature:
-    //         sensorVal[IDX_TEMP_WATER] = msg.value;
-    //         break;
-    //     case UartMessageInterface::DataType::SensorRoomTemperature:
-    //         sensorVal[IDX_TEMP_ROOM] = msg.value;
-    //         break;
-    //     case UartMessageInterface::DataType::SensorCO2:
-    //         sensorVal[IDX_CO2] = msg.value;
-    //         break;
-    //     case UartMessageInterface::DataType::SensorHumidity:
-    //         sensorVal[IDX_HUMIDITY] = msg.value;
-    //         break;
-    //     case UartMessageInterface::DataType::SensorConductivity:
-    //         sensorVal[IDX_CONDUCTIVITY] = msg.value;
-    //         break;
-    //     case UartMessageInterface::DataType::SensorPH:
-    //         sensorVal[IDX_PH] = msg.value;
-    //         break;
-    //     default:
-    //         break;
-    //     }
-    // }
+        switch (msg.type)
+        {
+        case UartMessageInterface::DataType::SensorWaterTemperature:
+            sensorVal[IDX_TEMP_WATER] = msg.value;
+            break;
+        case UartMessageInterface::DataType::SensorRoomTemperature:
+            sensorVal[IDX_TEMP_ROOM] = msg.value;
+            break;
+        case UartMessageInterface::DataType::SensorCO2:
+            sensorVal[IDX_CO2] = msg.value;
+            break;
+        case UartMessageInterface::DataType::SensorHumidity:
+            sensorVal[IDX_HUMIDITY] = msg.value;
+            break;
+        case UartMessageInterface::DataType::SensorConductivity:
+            sensorVal[IDX_CONDUCTIVITY] = msg.value;
+            break;
+        case UartMessageInterface::DataType::SensorPH:
+            sensorVal[IDX_PH] = msg.value;
+            break;
+        default:
+            break;
+        }
+    }
 
-    // String dbMsg(URL_BASE);
-    // for (size_t dbIdx = 0; dbIdx < NumOfSensor; dbIdx++)
-    // {
-    //     dbMsg += ((dbIdx == 0) ? "?" : "&");
-    //     dbMsg += sensorTypeStr[dbIdx];
-    //     dbMsg += "=";
-    //     dbMsg += String(sensorVal[dbIdx]);
-    // }
+    String dbMsg(URL_BASE);
+    for (size_t dbIdx = 0; dbIdx < NumOfSensor; dbIdx++)
+    {
+        dbMsg += ((dbIdx == 0) ? "?" : "&");
+        dbMsg += sensorTypeStr[dbIdx];
+        dbMsg += "=";
+        dbMsg += String(sensorVal[dbIdx]);
+    }
 
     // Serial.print("URL:");
     // Serial.println(dbMsg);
 
-    // http.begin(client, dbMsg);
-    // http.setTimeout(10000);
-    // int ret = http.GET();
-    // http.end();
+    WiFiClient client;
+    HTTPClient http;
+    http.begin(client, dbMsg);
+    http.setTimeout(10000);
+    int ret = http.GET();
+    http.end();
 
-    // // Serial.printf("Ret:%d. Done\n", ret);
+// Serial.printf("Ret:%d. Done\n", ret);
 }
 
 void onAcknowledge(uint32_t seqId, unsigned char msgId)
@@ -238,7 +241,7 @@ void sendControl(String data)
 
 void getControlFromWeb()
 {
-    Serial.println(__FUNCTION__);
+    // Serial.println(__FUNCTION__);
     String url("http://anhands.synology.me/setting.php");
 
     WiFiClient client;
@@ -277,38 +280,38 @@ void loop()
 
     delay(1);
 
-    if (currentSequence == 0)
-    {
-        // static uint32_t seqId = 10000;
-        // UartMessageInterface::UartMessageSender reqGet(UartMessageInterface::MsgId::RequestGet);
-        // reqGet.setSeqId(seqId++);
-        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorPH);
-        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorHumidity);
-        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorCO2);
-        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorRoomTemperature);
-        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorWaterTemperature);
-        // reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorConductivity);
-        // reqGet.sendMessage();
-        return;
-    }
+    // if (currentSequence == 0)
+    // {
+    //     static uint32_t seqId = 10000;
+    //     UartMessageInterface::UartMessageSender reqGet(UartMessageInterface::MsgId::RequestGet);
+    //     reqGet.setSeqId(seqId++);
+    //     reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorPH);
+    //     reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorHumidity);
+    //     reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorCO2);
+    //     reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorRoomTemperature);
+    //     reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorWaterTemperature);
+    //     reqGet.appendRequestGetData(UartMessageInterface::DataType::SensorConductivity);
+    //     reqGet.sendMessage();
+    //     return;
+    // }
 
-    if (currentSequence == 1)
-    {
-        digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
-        return;
-    }
+    // if (currentSequence == 1)
+    // {
+    //     digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
+    //     return;
+    // }
 
-    if (currentSequence == 401)
-    {
-        digitalWrite(LED_BUILTIN, LOW); // turn the LED on (HIGH is the voltage level)
-        return;
-    }
+    // if (currentSequence == 401)
+    // {
+    //     digitalWrite(LED_BUILTIN, LOW); // turn the LED on (HIGH is the voltage level)
+    //     return;
+    // }
 
-    if (currentSequence == 500)
-    {
-        getControlFromWeb();
-        return;
-    }
+    // if (currentSequence == 500)
+    // {
+    //     getControlFromWeb();
+    //     return;
+    // }
 }
 
 void serialEventHandler()
