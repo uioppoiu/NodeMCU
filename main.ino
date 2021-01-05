@@ -172,7 +172,7 @@ void setup()
     Serial.flush();
     Serial.println("Serial OK...");
 
-    // setupLED();
+    setupLED();
 
     // setup3ColorLED();
 
@@ -274,13 +274,12 @@ void loop()
     static int sequence = 0;
 
     defaultAction();
-    const int currentSequence = sequence;
     sequence++;
     sequence = sequence % 3000;
 
     delay(1);
 
-    // if (currentSequence == 0)
+    // if (sequence == 0)
     // {
     //     static uint32_t seqId = 10000;
     //     UartMessageInterface::UartMessageSender reqGet(UartMessageInterface::MsgId::RequestGet);
@@ -295,19 +294,23 @@ void loop()
     //     return;
     // }
 
-    // if (currentSequence == 1)
-    // {
-    //     digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
-    //     return;
-    // }
+    if (sequence == 0)
+    {
+        digitalWrite(LED_BUILTIN, HIGH); // turn the LED on (HIGH is the voltage level)
+        // Serial.println("LED HIGH");
 
-    // if (currentSequence == 401)
-    // {
-    //     digitalWrite(LED_BUILTIN, LOW); // turn the LED on (HIGH is the voltage level)
-    //     return;
-    // }
+        return;
+    }
 
-    // if (currentSequence == 500)
+    if (sequence == 1500)
+    {
+        digitalWrite(LED_BUILTIN, LOW); // turn the LED on (HIGH is the voltage level)
+        // Serial.println("LED LOW");
+
+        return;
+    }
+
+    // if (sequence == 500)
     // {
     //     getControlFromWeb();
     //     return;
