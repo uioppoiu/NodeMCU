@@ -275,7 +275,7 @@ void loop()
 
     defaultAction();
     sequence++;
-    sequence = sequence % 3000;
+    sequence = sequence % 1000;
 
     delay(1);
 
@@ -302,7 +302,7 @@ void loop()
         return;
     }
 
-    if (sequence == 1500)
+    if (sequence == 500)
     {
         digitalWrite(LED_BUILTIN, LOW); // turn the LED on (HIGH is the voltage level)
         // Serial.println("LED LOW");

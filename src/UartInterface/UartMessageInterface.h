@@ -60,16 +60,16 @@ namespace UartMessageInterface
         static const uint8_t DateTime = 0x20;
     };
 
-    const char *DataTypeStr(const unsigned char input);
+    // const char *DataTypeStr(const unsigned char input);
 
-    String getCurrentTime();
+    // String getCurrentTime();
 
-    uint8_t getCheckSum(const String &message);
+    // uint8_t getCheckSum(const String &message);
     uint8_t getCheckSum(const uint8_t *str, size_t strSize);
-    void appendCheckSum(String &message);
-    bool verityCheckSum(const String &message);
+    // void appendCheckSum(String &message);
+    // bool verityCheckSum(const String &message);
+    bool verityCheckSum(const uint8_t *str, size_t strSize);
 
-    // Endian 처리
     void writeEndian(ResponseGetData *data); // hton
     void readEndian(ResponseGetData *data);  // ntoh
 
