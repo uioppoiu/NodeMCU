@@ -18,7 +18,6 @@ namespace UartMessageInterface
 
     private:
         uint8_t _message[128];
-        size_t _msgSize;
         UartMessageReceiver();
     };
 

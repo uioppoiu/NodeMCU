@@ -4,7 +4,6 @@
 namespace UartMessageInterface
 {
     UartMessageReceiver::UartMessageReceiver(const uint8_t* msg, size_t msgSize)
-    : _msgSize(msgSize)
     {
         memcpy(_message, msg, msgSize);
         // if (verityCheckSum(message) == false) throw;
@@ -16,8 +15,6 @@ namespace UartMessageInterface
 
     void UartMessageReceiver::processMessage()
     {
-        if(verityCheckSum(_message, _msgSize) == false) return;
-        
         const MsgCommonHeader *msgHeader = (const MsgCommonHeader *)_message;
         const uint8_t msgId = msgHeader->msgId; // 메시지 ID
         const uint32_t seqId = ntohl(msgHeader->seqId);

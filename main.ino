@@ -10,7 +10,7 @@
 
 const char *WIFI_ID = "ANH_2.4G";
 const char *WIFI_PASS = "12345678";
-const char *URL_BASE = "http://anhands.synology.me/insert.php";
+const char *URL_BASE = "http://anhands.synology.me/insert2.php";
 
 
 void onRequestGet(uint32_t seqId, const UartMessageInterface::RequestGetData *dataArr, size_t arrSize)
@@ -72,9 +72,9 @@ void onResponseGet(uint32_t seqId, const UartMessageInterface::ResponseGetData *
 
 void onNotification(uint32_t seqId, const UartMessageInterface::NotificationData *dataArr, size_t arrSize)
 {
-    static bool ledstate = false;
-    digitalWrite(LED_BUILTIN, ledstate);
-    ledstate = !ledstate;
+    // static bool ledstate = false;
+    // digitalWrite(LED_BUILTIN, ledstate);
+    // ledstate = !ledstate;
 
     Serial.println(__FUNCTION__);
     for(size_t arrIdx = 0 ; arrIdx < arrSize ; arrIdx++)
@@ -152,6 +152,34 @@ void onNotification(uint32_t seqId, const UartMessageInterface::NotificationData
     http.end();
 
 // Serial.printf("Ret:%d. Done\n", ret);
+}
+
+void sendTestDataToDB()
+{
+    const size_t NumOfSensor = 6;
+    const char *sensorTypeStr[NumOfSensor] = {"humidity", "co2", "temperature", "cond", "ph", "watertemp"};
+    uint32_t sensorVal[NumOfSensor] = {
+        100,200,300,400,500,600
+    };
+
+    String dbMsg(URL_BASE);
+    for (size_t dbIdx = 0; dbIdx < NumOfSensor; dbIdx++)
+    {
+        dbMsg += ((dbIdx == 0) ? "?" : "&");
+        dbMsg += sensorTypeStr[dbIdx];
+        dbMsg += "=";
+        dbMsg += String(sensorVal[dbIdx]);
+    }
+
+    // Serial.print("URL:");
+    // Serial.println(dbMsg);
+
+    WiFiClient client;
+    HTTPClient http;
+    http.begin(client, dbMsg);
+    http.setTimeout(10000);
+    int ret = http.GET();
+    http.end();
 }
 
 void onAcknowledge(uint32_t seqId, unsigned char msgId)
@@ -309,6 +337,12 @@ void loop()
 
         return;
     }
+
+    // if(sequence == 1)
+    // {
+    //     sendTestDataToDB();
+    //     Serial.println("Send Test data to DB");
+    // }
 
     // if (sequence == 500)
     // {

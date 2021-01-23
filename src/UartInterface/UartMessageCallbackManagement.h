@@ -33,13 +33,17 @@ namespace UartMessageInterface
         static void invokeAcknowledgeCallBack(uint32_t seqId, unsigned char msgId);
 
     private:
-        static CallBackRequestGet _callBackRequestGet;
-        static CallBackResponseGet _callBackResponseGet;
-        static CallBackNotification _callBackNotification;
-        static CallBackSubscribe _callBackSubscribe;
-        static CallBackUnsubscribe _callBackUnsubscribe;
-        static CallBackRequestSet _callBackRequestSet;
-        static CallBackAcknowledge _callBackAcknowledge;
+        static UartMessageCallbackManagement *_Instance;
+        static UartMessageCallbackManagement &getInstance();
+        UartMessageCallbackManagement();
+
+        CallBackRequestGet _callBackRequestGet;
+        CallBackResponseGet _callBackResponseGet;
+        CallBackNotification _callBackNotification;
+        CallBackSubscribe _callBackSubscribe;
+        CallBackUnsubscribe _callBackUnsubscribe;
+        CallBackRequestSet _callBackRequestSet;
+        CallBackAcknowledge _callBackAcknowledge;
     };
 
 
