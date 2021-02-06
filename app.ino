@@ -5,6 +5,7 @@
 #include <TZ.h>
 #include "src/aws_cert.h"
 #include "src/I2CInterface/I2CInterface.h"
+#include "src/MessageInterface/MessageInterface.h"
 
 const char *WIFI_ID = "A1504_2.4Ghz";
 const char *WIFI_PASS = "hongsik102*";
@@ -41,7 +42,7 @@ void setup()
     I2CInterface::I2C_Master::init();
 
     // Callback
-    I2CInterface::CallBack::registerNotificationCallBack(onNotification);
+    MessageInterface::CallBack::registerNotificationCallBack(onNotification);
 
     // WiFi
     Serial.print("WiFi");
@@ -103,7 +104,7 @@ void loop()
         I2CInterface::I2C_Master::readSlaveBuffer();
         break;
     case 1:
-        I2CInterface::MessageReceiver::listen();
+        MessageInterface::MessageReceiver::listen();
         break;
     }
 }
@@ -190,12 +191,12 @@ void reconnect()
     }
 }
 
-void onNotification(uint32_t seqId, const I2CInterface::NotificationData *dataArr, size_t arrSize)
+void onNotification(uint32_t seqId, const MessageInterface::NotificationData *dataArr, size_t arrSize)
 {
     Serial.println(__FUNCTION__);
     for (size_t arrIdx = 0; arrIdx < arrSize; arrIdx++)
     {
-        const I2CInterface::ResponseGetData &msgData = dataArr[arrIdx];
+        const MessageInterface::ResponseGetData &msgData = dataArr[arrIdx];
         Serial.print("SeqId:");
         Serial.print(seqId);
         Serial.print(" Type:");
@@ -210,26 +211,26 @@ void onNotification(uint32_t seqId, const I2CInterface::NotificationData *dataAr
 
     for (size_t arrIdx = 0; arrIdx < arrSize; arrIdx++)
     {
-        const I2CInterface::ResponseGetData &msgData = dataArr[arrIdx];
+        const MessageInterface::ResponseGetData &msgData = dataArr[arrIdx];
 
         switch (msgData.type)
         {
-        case I2CInterface::DataType::SensorWaterTemperature:
+        case MessageInterface::DataType::SensorWaterTemperature:
             doc["water_temperature"] = msgData.value;
             break;
-        case I2CInterface::DataType::SensorRoomTemperature:
+        case MessageInterface::DataType::SensorRoomTemperature:
             doc["room_temperature"] = msgData.value;
             break;
-        case I2CInterface::DataType::SensorCO2:
+        case MessageInterface::DataType::SensorCO2:
             doc["water_co2"] = msgData.value;
             break;
-        case I2CInterface::DataType::SensorHumidity:
+        case MessageInterface::DataType::SensorHumidity:
             doc["room_humidity"] = msgData.value;
             break;
-        case I2CInterface::DataType::SensorConductivity:
+        case MessageInterface::DataType::SensorConductivity:
             doc["water_conductivity"] = msgData.value;
             break;
-        case I2CInterface::DataType::SensorPH:
+        case MessageInterface::DataType::SensorPH:
             doc["water_ph"] = msgData.value;
             break;
         default:
