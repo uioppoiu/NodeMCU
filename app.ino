@@ -4,6 +4,7 @@
 #include <time.h>
 #include <TZ.h>
 #include "src/aws_cert.h"
+#include "src/I2CInterface/I2CInterface.h"
 
 const char *WIFI_ID = "A1504_2.4Ghz";
 const char *WIFI_PASS = "hongsik102*";
@@ -37,10 +38,10 @@ void setup()
     Serial.printf("LED Initialized. Pin:%d", LED_BUILTIN);
 
     // I2C : Master
-    // I2CInterface::I2C_Master::init();
+    I2CInterface::I2C_Master::init();
 
     // Callback
-    // I2CInterface::CallBack::registerNotificationCallBack(onNotification);
+    I2CInterface::CallBack::registerNotificationCallBack(onNotification);
 
     // WiFi
     Serial.print("WiFi");
@@ -78,6 +79,7 @@ void setClock()
 
 int loopCount_T1 = 0;
 int loopCount_T2 = 0;
+int loopCount_T3 = 0;
 bool ledState = 0;
 void loop()
 {
@@ -89,10 +91,20 @@ void loop()
         ledState = !ledState;
     }
 
-    if (loopCount_T2 == 0)
+    // if (loopCount_T2 == 0)
+    // {
+    //     printTime();
+    //     sendSensorDataTest();
+    // }
+
+    switch (loopCount_T3)
     {
-        printTime();
-        sendSensorData();
+    case 0:
+        I2CInterface::I2C_Master::readSlaveBuffer();
+        break;
+    case 1:
+        I2CInterface::MessageReceiver::listen();
+        break;
     }
 }
 
@@ -104,9 +116,10 @@ void defaultLoop()
     }
     pubsubClient.loop();
 
-    loopCount_T1 = (loopCount_T1 + 1) % 500;
-    loopCount_T2 = (loopCount_T2 + 1) % 5000;
-    delay(1);
+    loopCount_T1 = (loopCount_T1 + 1) % 50;
+    loopCount_T2 = (loopCount_T2 + 1) % 500;
+    loopCount_T3 = (loopCount_T3 + 1) % 20;
+    delay(10);
 }
 
 void printTime()
@@ -118,7 +131,7 @@ void printTime()
     Serial.print(asctime(&timeinfo));
 }
 
-void sendSensorData()
+void sendSensorDataTest()
 {
     static int testValue = 0;
 
@@ -175,4 +188,58 @@ void reconnect()
             delay(3000);
         }
     }
+}
+
+void onNotification(uint32_t seqId, const I2CInterface::NotificationData *dataArr, size_t arrSize)
+{
+    Serial.println(__FUNCTION__);
+    for (size_t arrIdx = 0; arrIdx < arrSize; arrIdx++)
+    {
+        const I2CInterface::ResponseGetData &msgData = dataArr[arrIdx];
+        Serial.print("SeqId:");
+        Serial.print(seqId);
+        Serial.print(" Type:");
+        Serial.print((uint32_t)msgData.type);
+        Serial.print(" Value:");
+        Serial.println(msgData.value);
+    }
+
+    String output;
+    StaticJsonDocument<256> doc;
+    doc["device_name"] = "NodeMCU_001";
+
+    for (size_t arrIdx = 0; arrIdx < arrSize; arrIdx++)
+    {
+        const I2CInterface::ResponseGetData &msgData = dataArr[arrIdx];
+
+        switch (msgData.type)
+        {
+        case I2CInterface::DataType::SensorWaterTemperature:
+            doc["water_temperature"] = msgData.value;
+            break;
+        case I2CInterface::DataType::SensorRoomTemperature:
+            doc["room_temperature"] = msgData.value;
+            break;
+        case I2CInterface::DataType::SensorCO2:
+            doc["water_co2"] = msgData.value;
+            break;
+        case I2CInterface::DataType::SensorHumidity:
+            doc["room_humidity"] = msgData.value;
+            break;
+        case I2CInterface::DataType::SensorConductivity:
+            doc["water_conductivity"] = msgData.value;
+            break;
+        case I2CInterface::DataType::SensorPH:
+            doc["water_ph"] = msgData.value;
+            break;
+        default:
+            break;
+        }
+    }
+
+    serializeJson(doc, output);
+    pubsubClient.publish("update/sensor", output.c_str());
+
+    printTime();
+    Serial.printf("Publish sensor data\n %s\n", output.c_str());
 }
