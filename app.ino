@@ -92,11 +92,16 @@ void loop()
         ledState = !ledState;
     }
 
-    // if (loopCount_T2 == 0)
-    // {
-    //     printTime();
-    //     sendSensorDataTest();
-    // }
+    switch (loopCount_T2)
+    {
+    case 0:
+        // printTime();
+        // sendSensorDataTest();
+        break;
+    case 10:
+        setActuator2ArduinoTest();
+        break;
+    }
 
     switch (loopCount_T3)
     {
@@ -243,4 +248,18 @@ void onNotification(uint32_t seqId, const MessageInterface::NotificationData *da
 
     printTime();
     Serial.printf("Publish sensor data\n %s\n", output.c_str());
+}
+
+void setActuator2ArduinoTest()
+{
+    static int v = 0;
+    MessageInterface::MessageSender reqSet(MessageInterface::MsgId::RequestSet);
+    reqSet.setSeqId(v++);
+    reqSet.appendRequestSetData(MessageInterface::DataType::Control0, v * 10 + 1);
+    reqSet.appendRequestSetData(MessageInterface::DataType::Control3, v * 20 + 2);
+    reqSet.appendRequestSetData(MessageInterface::DataType::Control1, v * 30 + 3);
+    reqSet.appendRequestSetData(MessageInterface::DataType::Control2, v * 40 + 4);
+    reqSet.sendMessage();
+
+    I2CInterface::I2C_Master::writeSlaveBuffer();
 }
