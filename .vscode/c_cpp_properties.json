@@ -4,14 +4,19 @@
             "name": "Win32",
             "includePath": [
                 "C:\\Users\\HongS\\Documents\\Arduino\\libraries\\ArduinoJson\\src",
+                "C:\\Users\\HongS\\Documents\\Arduino\\libraries\\PubSubClient\\src",
                 "C:\\Users\\HongS\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
+                "C:\\Users\\HongS\\Documents\\Arduino\\libraries\\**",
+                "C:\\Program Files (x86)\\Arduino\\libraries\\**",
                 "C:\\Users\\HongS\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.7.4\\**"
             ],
             "forcedInclude": [],
-            "compilerPath": "C:/cygwin64/bin/g++.exe",
+            "defines": [
+                "USBCON"
+            ],
+            "intelliSenseMode": "windows-msvc-x64",
             "cStandard": "c17",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "gcc-x64"
+            "cppStandard": "c++17"
         }
     ],
     "version": 4
