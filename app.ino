@@ -4,9 +4,11 @@
 #include "src/WifiModule.h"
 #include "src/MqttModule.h"
 #include "src/Sensor/RoomTempHumidity.h"
+#include "src/Sensor/WaterTemperature.h"
 
 float Room_Temperature = 0;
 float Room_Humidity = 0;
+float Water_Temperature = 0;
 
 void setup()
 {
@@ -28,8 +30,11 @@ void setup()
     // Time sync
     TimeModule::setClock();
 
-    // Sensor
+    // Sensor - DHT22
     RoomTempHumiditySensor::init();
+
+    // Sensor - DS18B0
+    WaterTempHumiditySensor::init();
 }
 
 int loopCount_T1 = 0;
@@ -50,6 +55,9 @@ void loop()
     {
     case 0:
         updateDHTSensorData();
+        break;
+    case 50:
+        updateDS18B20Data();
         break;
     case 400:
         TimeModule::printTime();
@@ -72,6 +80,11 @@ void updateDHTSensorData()
 {
     Room_Temperature = RoomTempHumiditySensor::getTemperature();
     Room_Humidity = RoomTempHumiditySensor::getHumidity();
+}
+
+void updateDS18B20Data()
+{
+    Water_Temperature = WaterTempHumiditySensor::getTemperature();
 }
 
 void subscriptionCallback(char *topic, byte *payload, unsigned int length)
@@ -104,7 +117,7 @@ void sendSensorDataTest()
     doc["device_name"] = "NodeMCU_001";
     doc["room_temperature"] = Room_Temperature;
     doc["room_humidity"] = Room_Humidity;
-    doc["water_temperature"] = 30000 + testValue;
+    doc["water_temperature"] = Water_Temperature;
     doc["water_conductivity"] = 40000 + testValue;
     doc["water_ph"] = 50000 + testValue;
     doc["water_co2"] = 60000 + testValue;

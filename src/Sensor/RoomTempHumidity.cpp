@@ -11,7 +11,7 @@ namespace RoomTempHumiditySensor
     void init()
     {
         dht.begin();
-        Serial.printf("DHT initialized. Pin:%u\n", DHTPin);
+        Serial.printf("Room Temperature/Humidity sensor initialized. Pin:%u\n", DHTPin);
     }
 
     float getTemperature()
