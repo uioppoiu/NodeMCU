@@ -6,7 +6,7 @@
 
 #define ONE_WIRE_BUS 2
 
-class WaterTempHumiditySensor
+class WaterTemperatureSensor
 {
 public:
     static OneWire oneWire;

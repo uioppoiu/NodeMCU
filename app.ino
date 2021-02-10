@@ -5,10 +5,12 @@
 #include "src/MqttModule.h"
 #include "src/Sensor/RoomTempHumidity.h"
 #include "src/Sensor/WaterTemperature.h"
+#include "src/Sensor/WaterElectricalConductivity.h"
 
 float Room_Temperature = 0;
 float Room_Humidity = 0;
 float Water_Temperature = 0;
+float Water_EC = 0;
 
 void setup()
 {
@@ -34,7 +36,10 @@ void setup()
     RoomTempHumiditySensor::init();
 
     // Sensor - DS18B0
-    WaterTempHumiditySensor::init();
+    WaterTemperatureSensor::init();
+
+    // Sensor - DFR0300
+    WaterElectricalConductivity::init();
 }
 
 int loopCount_T1 = 0;
@@ -58,6 +63,9 @@ void loop()
         break;
     case 50:
         updateDS18B20Data();
+        break;
+    case 100:
+        updateDFR0300Data();
         break;
     case 400:
         TimeModule::printTime();
@@ -84,7 +92,12 @@ void updateDHTSensorData()
 
 void updateDS18B20Data()
 {
-    Water_Temperature = WaterTempHumiditySensor::getTemperature();
+    Water_Temperature = WaterTemperatureSensor::getTemperature();
+}
+
+void updateDFR0300Data()
+{
+    Water_EC = WaterElectricalConductivity::getEC(Water_Temperature);
 }
 
 void subscriptionCallback(char *topic, byte *payload, unsigned int length)
@@ -118,7 +131,7 @@ void sendSensorDataTest()
     doc["room_temperature"] = Room_Temperature;
     doc["room_humidity"] = Room_Humidity;
     doc["water_temperature"] = Water_Temperature;
-    doc["water_conductivity"] = 40000 + testValue;
+    doc["water_conductivity"] = Water_EC;
     doc["water_ph"] = 50000 + testValue;
     doc["water_co2"] = 60000 + testValue;
 

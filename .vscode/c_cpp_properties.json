@@ -3,6 +3,7 @@
         {
             "name": "Win32",
             "includePath": [
+                "C:\\Users\\HongS\\Documents\\Arduino\\libraries\\DFRobot_EC",
                 "C:\\Users\\HongS\\Documents\\Arduino\\libraries\\OneWire",
                 "C:\\Users\\HongS\\Documents\\Arduino\\libraries\\DallasTemperature",
                 "C:\\Users\\HongS\\Documents\\Arduino\\libraries\\DHT_sensor_library",

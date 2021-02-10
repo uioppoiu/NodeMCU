@@ -1,10 +1,10 @@
 #include "WaterTemperature.h"
 
-OneWire WaterTempHumiditySensor::oneWire(ONE_WIRE_BUS);
-DallasTemperature WaterTempHumiditySensor::sensors(&oneWire);
-DeviceAddress WaterTempHumiditySensor::insideThermometer;
+OneWire WaterTemperatureSensor::oneWire(ONE_WIRE_BUS);
+DallasTemperature WaterTemperatureSensor::sensors(&oneWire);
+DeviceAddress WaterTemperatureSensor::insideThermometer;
 
-void WaterTempHumiditySensor::init()
+void WaterTemperatureSensor::init()
 {
     //1-wire 버스 초기화
     sensors.begin();
@@ -40,7 +40,7 @@ void WaterTempHumiditySensor::init()
     Serial.printf("Water Temperature sensor initialized. Pin:%u\n", ONE_WIRE_BUS);
 }
 
-void WaterTempHumiditySensor::printAddress(DeviceAddress deviceAddress)
+void WaterTemperatureSensor::printAddress(DeviceAddress deviceAddress)
 {
     for (uint8_t i = 0; i < 8; i++)
     {
@@ -50,7 +50,7 @@ void WaterTempHumiditySensor::printAddress(DeviceAddress deviceAddress)
     }
 }
 
-float WaterTempHumiditySensor::getTemperature()
+float WaterTemperatureSensor::getTemperature()
 {
     Serial.print("Requesting temperatures...");
     
