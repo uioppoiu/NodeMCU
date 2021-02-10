@@ -3,6 +3,7 @@
         {
             "name": "Win32",
             "includePath": [
+                "C:\\Users\\HongS\\Documents\\Arduino\\libraries\\DHT_sensor_library",
                 "C:\\Users\\HongS\\Documents\\Arduino\\libraries\\ArduinoJson\\src",
                 "C:\\Users\\HongS\\Documents\\Arduino\\libraries\\PubSubClient\\src",
                 "C:\\Users\\HongS\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
