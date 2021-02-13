@@ -3,6 +3,7 @@
 #include <PubSubClient.h>
 #include <time.h>
 #include <TZ.h>
+#include <Ticker.h>
 #include "src/aws_cert.h"
 #include "src/I2CInterface/I2CInterface.h"
 #include "src/MessageInterface/MessageInterface.h"
@@ -74,6 +75,12 @@ void setup()
     wifiClient.setTrustAnchors(&ca);
     wifiClient.setClientRSACert(&cert, &key);
 
+    
+    //timer1 interrupt 1 sec
+    timer1_attachInterrupt(global_scheduler);
+    timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
+    timer1_write(5000000);//1000ms
+
     setClock();
 }
 
@@ -95,6 +102,8 @@ void setClock()
 int loopCount_T1 = 0;
 int loopCount_T2 = 0;
 int loopCount_T3 = 0;
+bool globalTimeOneSecFlag=0;
+bool globalTimeFiveSecFlag=0;
 bool ledState = 0;
 void loop()
 {
@@ -126,6 +135,18 @@ void loop()
         MessageInterface::MessageReceiver::listen();
         break;
     }
+
+    if( globalTimeOneSecFlag==1 )// get into every 1sec
+    {
+      //GetSensors();
+      globalTimeOneSecFlag=0;
+    }
+  
+    if( globalTimeFiveSecFlag==1 &&globalTimeOneSecFlag==0)// get into every 5sec
+    {
+      //SetControls();      
+      globalTimeFiveSecFlag=0;
+    }  
 }
 
 void defaultLoop()
@@ -276,4 +297,16 @@ void setActuator2ArduinoTest()
     reqSet.sendMessage();
 
     I2CInterface::I2C_Master::writeSlaveBuffer();
+}
+void global_scheduler()
+{
+    static int countFive=0;
+    timer1_write(5000000);//1000ms
+    countFive++;
+    if(countFive==5)
+    {
+        countFive=0;
+        globalTimeFiveSecFlag=1;
+    }  
+    globalTimeOneSecFlag=1;  
 }
