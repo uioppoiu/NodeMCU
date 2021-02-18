@@ -1,0 +1,10 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\I2CInterface",
+    "\\src\\MessageInterface"
+  ],
+  "SelectedNode": "\\src\\aws_cert.h",
+  "PreviewInSolutionExplorer": false
+}
