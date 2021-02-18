@@ -32,56 +32,58 @@ void setup()
     // Time sync
     TimeModule::setClock();
 
-    // Sensor - DHT22
+    // Sensor - DHT (Room temperature/humidity)
     RoomTempHumiditySensor::init();
 
-    // Sensor - DS18B0
-    WaterTemperatureSensor::init();
-
-    // Sensor - DFR0300
-    WaterElectricalConductivity::init();
+    // timer1 interrupt (1 sec)
+    timer1_attachInterrupt(global_scheduler);
+    timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
+    timer1_write(5000000); //1000ms
 }
 
-int loopCount_T1 = 0;
-int loopCount_T2 = 0;
-int loopCount_T3 = 0;
+bool globalTimeOneSecFlag = 0;
+bool globalTimeFiveSecFlag = 0;
+void global_scheduler()
+{
+    static int countFive = 0;
+    timer1_write(5000000); //1000ms
+    countFive++;
+    if (countFive == 5)
+    {
+        countFive = 0;
+        globalTimeFiveSecFlag = 1;
+    }
+    globalTimeOneSecFlag = 1;
+}
+
 void loop()
 {
     defaultLoop();
 
-    if (loopCount_T1 == 0)
+    if (globalTimeOneSecFlag == 1) // get into every 1sec
     {
+        globalTimeOneSecFlag = 0;
+
         static bool ledState = false;
         digitalWrite(LED_BUILTIN, ledState);
         ledState = !ledState;
     }
 
-    switch (loopCount_T2)
+    if (globalTimeFiveSecFlag == 1 && globalTimeOneSecFlag == 0) // get into every 5sec
     {
-    case 0:
+        globalTimeFiveSecFlag = 0;
+        
         updateDHTSensorData();
-        break;
-    case 50:
-        updateDS18B20Data();
-        break;
-    case 100:
-        updateDFR0300Data();
-        break;
-    case 400:
+
         TimeModule::printTime();
         sendSensorDataTest();
-        break;
     }
 }
 
 void defaultLoop()
 {
     MqttModule::loop();
-
-    loopCount_T1 = (loopCount_T1 + 1) % 50;
-    loopCount_T2 = (loopCount_T2 + 1) % 500;
-    loopCount_T3 = (loopCount_T3 + 1) % 20;
-    delay(10);
+    delay(1);
 }
 
 void updateDHTSensorData()
@@ -140,5 +142,7 @@ void sendSensorDataTest()
     MqttModule::pubsubClient.publish("update/sensor", output.c_str());
 
     Serial.printf("Publish sensor data. testValue:%d\n", testValue);
+    Serial.printf("Message : \"%s\"\n", output.c_str());
+    
     testValue = (testValue + 1) % 10000;
 }
